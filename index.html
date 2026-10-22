@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>วางแผนการปลูกปาล์ม (สามเหลี่ยมด้านเท่า 9x9x9 ม.)</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <h1>🌴 วางแผนปลูกปาล์ม</h1>
+    <div class="sub">ปลูกแบบสามเหลี่ยมด้านเท่า 9 × 9 × 9 เมตร</div>
+
+    <div class="card">
+      <h2>พื้นที่ที่วาด</h2>
+      <div class="row"><span>ตารางเมตร</span><b id="areaM2">–</b></div>
+      <div class="row"><span>ไร่</span><b id="areaRai">–</b></div>
+      <div class="row"><span>งาน</span><b id="areaNgan">–</b></div>
+      <div class="row"><span>ตารางวา</span><b id="areaWa">–</b></div>
+    </div>
+
+    <div class="card">
+      <h2>จำนวนต้น</h2>
+      <div class="row"><span>ประมาณการตามสูตร</span><b id="treeEst">–</b></div>
+      <div class="row"><span>จำนวนจุดที่สร้างจริง</span><b class="big" id="treeActual">–</b></div>
+      <div class="row"><span>ความหนาแน่นจริง (ต้น/ไร่)</span><b id="treeDensity">–</b></div>
+      <div class="row"><span>ต้นต่อไร่ (ทฤษฎี)</span><b id="treePerRai">–</b></div>
+      <div class="row"><span>ระยะห่างระหว่างแถว</span><b id="rowSpacing">–</b></div>
+    </div>
+
+    <div class="card">
+      <h2>ตั้งค่าการสร้างกริด</h2>
+      <div class="field">
+        <label for="rotation">หมุนแนวแถว (องศา, -90 ถึง 90)</label>
+        <input type="number" id="rotation" value="0" step="1" min="-90" max="90">
+      </div>
+      <div class="field">
+        <label for="margin">เว้นระยะจากขอบแปลง (เมตร)</label>
+        <input type="number" id="margin" value="0" step="0.5" min="0">
+      </div>
+    </div>
+
+    <!-- [แก้ไข 1] เปลี่ยนข้อความปุ่มหลักเป็นภาษาไทย -->
+    <button id="btnGenerate" disabled>🌴 สร้างจุดปลูกปาล์ม</button>
+    <div class="two">
+      <button id="btnGeoJSON" class="btn3" disabled>⬇ GeoJSON</button>
+      <button id="btnCSV" class="btn3" disabled>⬇ CSV</button>
+    </div>
+    <button id="btnUndo" class="btn2" disabled>↩ เลิกทำการลบต้น (Ctrl+Z)</button>
+    <div class="two">
+      <button id="btnCenter" class="btn2">📍 กลับศูนย์กลาง</button>
+      <button id="btnClear" class="btn2">ล้างทั้งหมด</button>
+    </div>
+
+    <!-- [แก้ไข 5] เปลี่ยนข้อความเริ่มต้นของ #status ให้เป็นมิตรและเข้าใจง่าย -->
+    <div id="status" aria-live="polite">📍 ขั้นตอนแรก: กดปุ่มรูปหลายเหลี่ยม (มุมซ้ายบน) เพื่อวาดขอบเขตที่ดินของคุณ</div>
+
+    <!-- [แก้ไข 4] ปรับข้อความแนะนำการใช้งานให้เป็นขั้นตอน -->
+    <p class="help">
+      <b>วิธีใช้งาน:</b><br>
+      1. กดปุ่มรูปหลายเหลี่ยม (มุมซ้ายบนของแผนที่) แล้วคลิกวาดขอบเขตที่ดินของคุณ<br>
+      2. กดปุ่ม "🌴 สร้างจุดปลูกปาล์ม" เพื่อให้ระบบคำนวณจุดปลูกอัตโนมัติ<br>
+      3. ลากจุดสีเขียวเพื่อปรับตำแหน่งได้ ระบบจะเตือนเป็น<span style="color:#e53935;font-weight:700">สีแดง</span>หากระยะห่างน้อยกว่า 9 เมตร<br>
+      4. แตะ/คลิกที่จุดแล้วกด "🗑 ลบต้นนี้" (หรือคลิกขวาเพื่อลบทันที) ลบผิดกด "↩ เลิกทำ" ได้
+    </p>
+  </div>
+
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+<script src="js/calculator.js"></script>
+<script src="js/app.js"></script>
+<script src="js/exporter.js"></script>
+</body>
+</html>

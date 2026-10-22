@@ -1,0 +1,46 @@
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; font-family: "Sarabun", "Noto Sans Thai", system-ui, sans-serif; }
+  #app { display: flex; height: 100%; }
+  #sidebar {
+    width: 330px; min-width: 330px; background: #fff; border-right: 1px solid #ddd;
+    padding: 14px; overflow-y: auto; z-index: 1000;
+  }
+  #map { flex: 1; }
+  h1 { font-size: 18px; margin: 0 0 4px; color: #1b5e20; }
+  .sub { font-size: 12px; color: #666; margin-bottom: 12px; }
+  .card { background: #f4f8f4; border: 1px solid #d5e5d5; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+  .card h2 { font-size: 13px; margin: 0 0 6px; color: #2e7d32; }
+  .row { display: flex; justify-content: space-between; font-size: 14px; padding: 2px 0; gap: 8px; }
+  .row b { font-variant-numeric: tabular-nums; text-align: right; }
+  .big { font-size: 22px; font-weight: 700; color: #1b5e20; }
+  button {
+    width: 100%; padding: 10px; margin-bottom: 8px; border: 0; border-radius: 8px;
+    font-size: 15px; cursor: pointer; font-family: inherit;
+  }
+  #btnGenerate { background: #2e7d32; color: #fff; font-weight: 600; }
+  button:disabled { background: #cfd8cf !important; color: #888 !important; cursor: not-allowed; }
+  .btn2 { background: #eee; color: #333; }
+  .btn3 { background: #e3f2fd; color: #0d47a1; }
+  .two { display: flex; gap: 8px; }
+  .two button { flex: 1; }
+  label { font-size: 13px; display: block; margin-bottom: 4px; }
+  .field { margin-bottom: 8px; }
+  .field:last-child { margin-bottom: 0; }
+  input[type=number] { width: 100%; padding: 6px; border: 1px solid #bbb; border-radius: 6px; font-size: 14px; }
+  #status { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: #eef3fb; color: #234; margin-bottom: 8px; }
+  #status.ok   { background: #e6f4e6; color: #1b5e20; }
+  #status.warn { background: #fdeaea; color: #b71c1c; font-weight: 600; }
+  .help { font-size: 12px; color: #555; line-height: 1.6; margin: 0; }
+
+  /* จุดต้นปาล์ม */
+  .tree-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #2e7d32; border: 2px solid #fff; box-shadow: 0 0 2px #000;
+  }
+  .tree-dot.bad { background: #e53935; }
+
+  @media (max-width: 720px) {
+    #app { flex-direction: column-reverse; }
+    #sidebar { width: 100%; min-width: 0; height: 48%; border-right: 0; border-top: 1px solid #ddd; }
+    #map { height: 52%; flex: none; }
+  }
