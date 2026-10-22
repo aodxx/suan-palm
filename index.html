@@ -16,6 +16,14 @@
     <div class="sub">ปลูกแบบสามเหลี่ยมด้านเท่า 9 × 9 × 9 เมตร</div>
 
     <div class="card">
+      <h2>ข้อมูลแปลง</h2>
+      <div class="field">
+        <label for="plotName">ชื่อแปลง/เจ้าของแปลง</label>
+        <input type="text" id="plotName" placeholder="เช่น สวนปาล์มบ้านเรา" maxlength="120">
+      </div>
+    </div>
+
+    <div class="card">
       <h2>พื้นที่ที่วาด</h2>
       <div class="row"><span>ตารางเมตร</span><b id="areaM2">–</b></div>
       <div class="row"><span>ไร่</span><b id="areaRai">–</b></div>
@@ -46,6 +54,7 @@
 
     <!-- [แก้ไข 1] เปลี่ยนข้อความปุ่มหลักเป็นภาษาไทย -->
     <button id="btnGenerate" disabled>🌴 สร้างจุดปลูกปาล์ม</button>
+    <button id="btnPDF" class="btn-pdf" disabled title="ดาวน์โหลดแผนที่และข้อมูลเป็นไฟล์ PDF เพื่อนำไปพิมพ์หรือแชร์">📄 ดาวน์โหลดแผนที่ + ข้อมูล (PDF)</button>
     <div class="two">
       <button id="btnGeoJSON" class="btn3" disabled>⬇ GeoJSON</button>
       <button id="btnCSV" class="btn3" disabled>⬇ CSV</button>
@@ -75,6 +84,8 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="js/calculator.js"></script>
 <script src="js/app.js"></script>
 <script src="js/exporter.js"></script>

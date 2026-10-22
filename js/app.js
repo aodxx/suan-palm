@@ -112,6 +112,7 @@ function updateCount() {
   const has = trees.length > 0;
   $('btnGeoJSON').disabled = !has;
   $('btnCSV').disabled = !has;
+  $('btnPDF').disabled = !has;
   $('btnUndo').disabled = !removed.length;
 }
 
