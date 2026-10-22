@@ -50,6 +50,18 @@
   }
   .tree-dot.bad { background: #e53935; }
   .leaflet-overlay-pane .plot-boundary { filter: drop-shadow(0 0 1.5px #3f2d00); }
+  /* ปุ่มยืนยัน/ย้อนกลับ/ยกเลิกระหว่างวาด: ใช้ไอคอนแทนข้อความภาษาอังกฤษ */
+  .leaflet-draw-actions a {
+    min-width: 42px;
+    width: 42px;
+    height: 38px;
+    padding: 8px 10px;
+    font-size: 0;
+    line-height: 22px;
+    text-align: center;
+  }
+  .leaflet-draw-actions a::first-letter { font-size: 24px; }
+  .leaflet-draw-actions a:hover { background: #fff8cc; color: #7a5600; }
 
   @media (max-width: 720px) {
     #app { flex-direction: column-reverse; }

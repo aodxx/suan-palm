@@ -38,6 +38,33 @@ const PLOT_BOUNDARY_STYLE = {
   className: 'plot-boundary'
 };
 
+// เปลี่ยนข้อความภาษาอังกฤษของ Leaflet.draw เป็นไอคอน พร้อม Tooltip ภาษาไทย
+L.drawLocal.draw.toolbar.actions = {
+  title: 'ยกเลิกการวาด', text: '✕'
+};
+L.drawLocal.draw.toolbar.finish = {
+  title: 'ปิดพื้นที่และเสร็จสิ้นการวาด', text: '✓'
+};
+L.drawLocal.draw.toolbar.undo = {
+  title: 'ลบจุดล่าสุด', text: '↶'
+};
+L.drawLocal.draw.handlers.polygon.tooltip = {
+  start: 'คลิกเพื่อเริ่มวาดขอบเขตแปลง',
+  cont: 'คลิกเพื่อเพิ่มจุดขอบเขต',
+  end: 'คลิกจุดแรกเพื่อปิดขอบเขตแปลง'
+};
+L.drawLocal.edit.toolbar.actions = {
+  save: { title: 'บันทึกการแก้ไข', text: '✓' },
+  cancel: { title: 'ยกเลิกการแก้ไข', text: '✕' },
+  clearAll: { title: 'ลบพื้นที่ทั้งหมด', text: '⌫' }
+};
+L.drawLocal.edit.toolbar.buttons = {
+  edit: 'แก้ไขขอบเขตพื้นที่',
+  editDisabled: 'ยังไม่มีพื้นที่ให้แก้ไข',
+  remove: 'ลบขอบเขตพื้นที่',
+  removeDisabled: 'ยังไม่มีพื้นที่ให้ลบ'
+};
+
 map.addControl(new L.Control.Draw({
   draw: {
     polygon: { allowIntersection: false, showArea: false, shapeOptions: PLOT_BOUNDARY_STYLE },
@@ -529,9 +556,21 @@ gridLayer.on('contextmenu', e => removeTree(e.layer._tree));        // คลิ
 map.whenReady(() => {
   const setTitle = (sel, text) => {
     const el = document.querySelector(sel);
-    if (el) el.title = text;
+    if (el) {
+      el.title = text;
+      el.setAttribute('aria-label', text);
+    }
   };
   setTitle('.leaflet-draw-draw-polygon', 'วาดขอบเขตพื้นที่ (คลิกเพื่อเริ่ม)');
   setTitle('.leaflet-draw-edit-edit',    'แก้ไขขอบเขตพื้นที่ (ลากจุดมุม)');
   setTitle('.leaflet-draw-edit-remove',  'ลบขอบเขตพื้นที่');
+  document.querySelectorAll('.leaflet-draw-actions a').forEach(action => {
+    const text = action.textContent.trim();
+    const labels = { '✓': 'เสร็จสิ้นการวาด', '↶': 'ลบจุดล่าสุด', '✕': 'ยกเลิกการวาด', '⌫': 'ลบพื้นที่ทั้งหมด' };
+    const label = labels[text];
+    if (label) {
+      action.title = label;
+      action.setAttribute('aria-label', label);
+    }
+  });
 });
