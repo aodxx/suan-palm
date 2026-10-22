@@ -11,10 +11,16 @@ const TOL = 0.05;                        // เผื่อความคลา
 // ---------- แผนที่และชั้นแผนที่ ----------
 const esriImagery = L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  { maxZoom: 19, attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community' });
+  {
+    // Esri บางพื้นที่ เช่น พัทลุงไม่มีภาพจริงที่ z19 และจะส่งภาพเทา
+    // “Map data not yet available” กลับมา ให้ Leaflet ขยายภาพ z18 แทน
+    maxNativeZoom: 18,
+    maxZoom: 19,
+    attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+  });
 const esriLabels = L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-  { maxZoom: 19, attribution: 'Labels &copy; Esri' });
+  { maxNativeZoom: 18, maxZoom: 19, attribution: 'Labels &copy; Esri' });
 const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' });
 
