@@ -31,6 +31,7 @@
   .btn-location { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; font-size: 13px; margin-top: 8px; margin-bottom: 0; }
   input[type=number], input[type=text] { width: 100%; padding: 6px; border: 1px solid #bbb; border-radius: 6px; font-size: 14px; font-family: inherit; }
   .btn-pdf { background: #c62828; color: #fff; font-weight: 600; }
+  .btn-print { background: #1565c0; color: #fff; font-weight: 600; }
   #status { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: #eef3fb; color: #234; margin-bottom: 8px; }
   #status.ok   { background: #e6f4e6; color: #1b5e20; }
   #status.warn { background: #fdeaea; color: #b71c1c; font-weight: 600; }

@@ -13,6 +13,10 @@ function currentPoints() {
   });
 }
 
+function csvCell(value) {
+  return '"' + String(value ?? '').replace(/"/g, '""').replace(/\r?\n/g, ' ') + '"';
+}
+
 // [เพิ่ม] สร้างข้อมูลส่วนหัวร่วมสำหรับไฟล์ดาวน์โหลดทุกประเภท
 function exportLocation() {
   if (userLocation) return userLocation;
@@ -53,11 +57,11 @@ $('btnCSV').addEventListener('click', () => {
   const metadata = exportMetadata();
   const coordinate = metadata.location ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6) : 'ไม่ทราบ';
   const header = [
-    '# แปลง: ' + metadata.plotName,
-    '# ตำแหน่ง: ' + metadata.address,
-    '# พิกัด: ' + coordinate,
-    '# รหัสไปรษณีย์: ' + (metadata.postcode || 'ไม่ระบุ'),
-    '# วันที่สร้าง: ' + metadata.createdAt
+    '# แปลง: ' + csvCell(metadata.plotName),
+    '# ตำแหน่ง: ' + csvCell(metadata.address),
+    '# พิกัด: ' + csvCell(coordinate),
+    '# รหัสไปรษณีย์: ' + csvCell(metadata.postcode || 'ไม่ระบุ'),
+    '# วันที่สร้าง: ' + csvCell(metadata.createdAt)
   ];
   const rows = ['id,lat,lng'].concat(currentPoints().map(p =>
     p.id + ',' + p.lat.toFixed(8) + ',' + p.lng.toFixed(8)));
@@ -228,3 +232,107 @@ async function exportPdf() {
 }
 
 $('btnPDF').addEventListener('click', exportPdf);
+
+// ---------- พิมพ์รายงานผ่าน Browser (ทางเลือกสำรองสำหรับมือถือ) ----------
+function reportValue(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function printReportData(metadata) {
+  const area = m2ToThaiArea(currentAreaM2);
+  const rai = currentAreaM2 / RAI_M2;
+  return {
+    area,
+    treeCount: trees.length.toLocaleString('th-TH'),
+    density: rai > 0 ? (trees.length / rai).toFixed(2) : '–',
+    center: metadata.location
+      ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6)
+      : 'ไม่ทราบ'
+  };
+}
+
+function printReportTemplate(metadata, data, mapImage) {
+  const rows = [
+    ['พื้นที่ (ตารางเมตร)', currentAreaM2.toLocaleString('th-TH', { maximumFractionDigits: 1 })],
+    ['พื้นที่ (ไร่)', String(data.area.rai)],
+    ['พื้นที่ (งาน)', String(data.area.ngan)],
+    ['พื้นที่ (ตารางวา)', data.area.wa.toFixed(2)],
+    ['จำนวนต้นทั้งหมด', data.treeCount + ' ต้น'],
+    ['จำนวนต้นต่อไร่ (จริง)', data.density],
+    ['จำนวนต้นต่อไร่ (ทฤษฎี)', TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')'],
+    ['ระยะห่างระหว่างแถว', ROW_SPACING.toFixed(3) + ' เมตร'],
+    ['พิกัดที่ใช้ส่งออก', data.center]
+  ];
+  return '<main class="print-report">' +
+    '<h1>แผนที่วางแผนปลูกปาล์ม</h1>' +
+    '<div class="meta">' +
+      '<div><strong>แปลง:</strong> ' + reportValue(metadata.plotName) + '</div>' +
+      '<div><strong>ตำแหน่ง:</strong> ' + reportValue(metadata.address) + '</div>' +
+      '<div><strong>พิกัด:</strong> ' + reportValue(data.center) + '</div>' +
+      '<div><strong>วันที่สร้าง:</strong> ' + reportValue(metadata.createdAt) + '</div>' +
+    '</div>' +
+    '<img class="map-image" src="' + mapImage + '" alt="แผนที่แปลงปลูกปาล์ม">' +
+    '<div class="page-break"></div>' +
+    '<h2>สรุปข้อมูลการวางแผน</h2>' +
+    '<table><tbody>' + rows.map(row =>
+      '<tr><th>' + reportValue(row[0]) + '</th><td>' + reportValue(row[1]) + '</td></tr>'
+    ).join('') + '</tbody></table>' +
+    '<p class="note">หมายเหตุ: ข้อมูลนี้เป็นผลคำนวณจากจุดปลูกที่สร้างและปรับตำแหน่งล่าสุด</p>' +
+  '</main>';
+}
+
+function printReportStyles() {
+  return '<style>' +
+    '*{box-sizing:border-box}body{margin:0;background:#fff;color:#263238;font-family:"Noto Sans Thai","Sarabun",Tahoma,sans-serif}' +
+    '.print-report{max-width:900px;margin:0 auto;padding:32px}.print-report h1{color:#14532d;font-size:28px;margin:0 0 10px}.print-report h2{color:#14532d;font-size:22px;margin:26px 0 12px}.meta{font-size:16px;line-height:1.8;margin-bottom:20px}.map-image{display:block;width:100%;height:auto;border:1px solid #cbd5e1;margin:18px 0 24px}.print-report table{width:100%;border-collapse:collapse;font-size:16px}.print-report th,.print-report td{border:1px solid #cbd5e1;padding:10px 12px}.print-report th{width:42%;text-align:left;background:#eaf4ea}.print-report td{text-align:right;font-weight:600}.page-break{break-before:page;page-break-before:always}.note{color:#6b7280;font-size:14px;margin-top:22px}@page{size:A4 portrait;margin:12mm}@media print{.print-report{padding:0}}' +
+  '</style>';
+}
+
+async function printReport() {
+  if (!trees.length || !currentFeature) {
+    setStatus('กรุณาวาดพื้นที่และสร้างจุดปลูกก่อนพิมพ์รายงาน', 'warn');
+    return;
+  }
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    setStatus('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต Pop-up แล้วลองใหม่', 'warn');
+    return;
+  }
+  const button = $('btnPrint');
+  const oldText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'กำลังเตรียมรายงาน...';
+  try {
+    printWindow.document.write('<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>รายงานแผนการปลูกปาล์ม</title>' + printReportStyles() + '</head><body><div id="printRoot">กำลังเตรียมรายงาน...</div></body></html>');
+    printWindow.document.close();
+    map.invalidateSize();
+    await waitForMapTiles();
+    const mapCanvas = await html2canvas($('map'), {
+      scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', logging: false,
+      onclone: clonedDocument => clonedDocument.querySelectorAll('.leaflet-control-container').forEach(el => { el.style.display = 'none'; })
+    });
+    const metadata = exportMetadata();
+    const data = printReportData(metadata);
+    printWindow.document.getElementById('printRoot').innerHTML = printReportTemplate(metadata, data, mapCanvas.toDataURL('image/png'));
+    const image = printWindow.document.querySelector('.map-image');
+    if (image && !image.complete) await new Promise(resolve => { image.onload = resolve; image.onerror = resolve; });
+    await new Promise(resolve => setTimeout(resolve, 300));
+    printWindow.focus();
+    printWindow.print();
+    setStatus('เปิดหน้าพิมพ์แล้ว กรุณาเลือก “บันทึกเป็น PDF” หากต้องการไฟล์ PDF', 'ok');
+  } catch (error) {
+    console.error('Print report failed:', error);
+    printWindow.close();
+    setStatus('ไม่สามารถเตรียมรายงานสำหรับพิมพ์ได้ กรุณาลองใหม่อีกครั้ง', 'warn');
+  } finally {
+    button.disabled = false;
+    button.textContent = oldText;
+  }
+}
+
+$('btnPrint').addEventListener('click', printReport);

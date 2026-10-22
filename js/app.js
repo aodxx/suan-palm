@@ -67,10 +67,12 @@ function updateLocationLabel() {
 
 async function reverseGeocode(lat, lng) {
   // Nominatim ต้องการการระบุแอป; เบราว์เซอร์บางตัวอาจละเว้น User-Agent header แบบกำหนดเอง
+  setStatus('กำลังค้นหาชื่อตำบล อำเภอ และจังหวัดจากพิกัด...');
   const cacheKey = lat.toFixed(5) + ',' + lng.toFixed(5);
   if (geocodeCache.has(cacheKey)) {
     userAddress = geocodeCache.get(cacheKey);
     updateLocationLabel();
+    setStatus('ได้รับตำแหน่งและข้อมูลพื้นที่แล้ว กรุณาวาดขอบเขตแปลงของคุณ', 'ok');
     return;
   }
   const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&layer=address&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lng) + '&accept-language=th';
@@ -93,9 +95,11 @@ async function reverseGeocode(lat, lng) {
       postcode: a.postcode || ''
     };
     geocodeCache.set(cacheKey, userAddress);
+    setStatus('ได้รับตำแหน่งและข้อมูลพื้นที่แล้ว กรุณาวาดขอบเขตแปลงของคุณ', 'ok');
   } catch (error) {
     console.warn('Reverse geocoding failed:', error);
     userAddress = null;
+    setStatus('ได้พิกัดแล้ว แต่ค้นหาชื่อตำบล/อำเภอ/จังหวัดไม่สำเร็จ สามารถใช้งานต่อได้', 'warn');
   }
   updateLocationLabel();
 }
@@ -110,6 +114,8 @@ function requestUserLocation() {
     button.disabled = true;
     button.textContent = 'กำลังขอตำแหน่ง...';
   }
+  userAddress = null;
+  updateLocationLabel();
   setStatus('กำลังขออนุญาตใช้ตำแหน่ง เพื่อแสดงแผนที่บริเวณที่คุณอยู่...');
   navigator.geolocation.getCurrentPosition(position => {
     userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
@@ -125,11 +131,22 @@ function requestUserLocation() {
       button.disabled = false;
       button.textContent = '📍 ดึงตำแหน่งของฉันอีกครั้ง';
     }
-  }, () => {
+  }, error => {
     userLocation = null;
     userAddress = null;
+    if (userLocationMarker) {
+      map.removeLayer(userLocationMarker);
+      userLocationMarker = null;
+    }
     updateLocationLabel();
-    setStatus('ยังไม่ได้รับอนุญาตตำแหน่ง กดปุ่มเดิมอีกครั้งหรือตรวจสอบสิทธิ์ Location ของเบราว์เซอร์', 'warn');
+    const message = error && error.code === 1
+      ? 'ยังไม่ได้รับอนุญาตตำแหน่ง กรุณาอนุญาต Location ในเบราว์เซอร์แล้วลองใหม่'
+      : error && error.code === 2
+        ? 'ไม่พบตำแหน่งปัจจุบัน กรุณาตรวจสอบ GPS หรือสัญญาณอินเทอร์เน็ตแล้วลองใหม่'
+        : error && error.code === 3
+          ? 'ค้นหาตำแหน่งใช้เวลานานเกินไป กรุณาลองใหม่ในบริเวณที่รับสัญญาณได้ดี'
+          : 'ไม่สามารถดึงตำแหน่งได้ กรุณาตรวจสอบสิทธิ์ Location แล้วลองใหม่';
+    setStatus(message, 'warn');
     if (button) {
       button.disabled = false;
       button.textContent = '📍 อนุญาตและใช้ตำแหน่งของฉัน';
@@ -206,6 +223,7 @@ function updateCount() {
   $('btnGeoJSON').disabled = !has;
   $('btnCSV').disabled = !has;
   $('btnPDF').disabled = !has;
+  $('btnPrint').disabled = !has;
   $('btnUndo').disabled = !removed.length;
 }
 
@@ -273,7 +291,6 @@ function insidePolys(x, y, polys) {
 // ---------- สร้างกริดสามเหลี่ยมด้านเท่า ----------
 function generateGrid() {
   if (!currentFeature) return;
-  clearGrid();
 
   const [clng, clat] = turf.centroid(currentFeature).geometry.coordinates;
   origin = makeOrigin(clat, clng);
@@ -346,6 +363,9 @@ function generateGrid() {
   if (!pts.length) { setStatus('ไม่พบจุดปลูกในพื้นที่นี้', 'warn'); return; }
   if (pts.length > 5000 &&
       !confirm('จะสร้าง ' + pts.length.toLocaleString('th-TH') + ' จุด อาจทำให้เครื่องช้า ต้องการดำเนินการต่อหรือไม่?')) return;
+
+  // ล้างจุดเดิมหลังตรวจสอบทุกเงื่อนไขผ่านแล้วเท่านั้น
+  clearGrid();
 
   // สร้าง Marker (ลากได้) — เหตุการณ์ลาก/คลิกจัดการที่ gridLayer ครั้งเดียว
   const icon = L.divIcon({ className: '', html: '<div class="tree-dot"></div>', iconSize: [12, 12], iconAnchor: [6, 6] });
