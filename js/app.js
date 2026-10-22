@@ -306,7 +306,23 @@ let lastGeneratedSpacing = SPACING;
 
 // ---------- บันทึกข้อมูลแปลงไว้ในอุปกรณ์ของผู้ใช้ ----------
 const STORAGE_KEY = 'suan-palm-draft-v1';
+const SHEET_KEY = 'suan-palm-sheet-collapsed';
 let restoringDraft = false;
+
+function setSheetCollapsed(collapsed) {
+  const sidebar = $('sidebar');
+  const toggle = $('sheetToggle');
+  if (!sidebar || !toggle) return;
+  sidebar.classList.toggle('is-collapsed', collapsed);
+  toggle.setAttribute('aria-expanded', String(!collapsed));
+  toggle.querySelector('.sheet-toggle-label').textContent = collapsed ? 'เปิดข้อมูลแปลงและเครื่องมือ' : 'ข้อมูลแปลงและเครื่องมือ';
+  localStorage.setItem(SHEET_KEY, collapsed ? '1' : '0');
+  setTimeout(() => map.invalidateSize({ animate: false }), 260);
+}
+
+function toggleSheet() {
+  setSheetCollapsed(!$('sidebar').classList.contains('is-collapsed'));
+}
 
 function setStorageStatus(text) {
   const el = $('storageStatus');
@@ -703,6 +719,15 @@ function recheckAll() {
 
 
 // ---------- เหตุการณ์ ----------
+if ($('sheetToggle')) $('sheetToggle').addEventListener('click', toggleSheet);
+if (window.matchMedia('(max-width: 720px)').matches) {
+  if (localStorage.getItem(SHEET_KEY) === '1') setSheetCollapsed(true);
+  map.on('click', () => {
+    if (!pickingPlotLocation && !$('sidebar').classList.contains('is-collapsed')) setSheetCollapsed(true);
+  });
+  map.on(L.Draw.Event.DRAWSTART, () => setSheetCollapsed(true));
+  map.on(L.Draw.Event.CREATED, () => setSheetCollapsed(false));
+}
 map.on('click', e => {
   if (pickingPlotLocation) savePlotLocation(e.latlng);
 });

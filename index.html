@@ -28,6 +28,12 @@
 <noscript><div style="padding:16px;background:#fff3cd;color:#664d03;font-family:sans-serif">กรุณาเปิดใช้งาน JavaScript เพื่อใช้แผนที่และคำนวณจุดปลูกปาล์ม</div></noscript>
 <div id="app">
   <div id="sidebar">
+    <button id="sheetToggle" class="sheet-toggle" type="button" aria-expanded="true" aria-controls="sidebarContent">
+      <span class="sheet-grip" aria-hidden="true"></span>
+      <span class="sheet-toggle-label">ข้อมูลแปลงและเครื่องมือ</span>
+      <span class="sheet-chevron" aria-hidden="true">⌄</span>
+    </button>
+    <div id="sidebarContent">
     <h1><img class="brand-icon" src="assets/icons/png/palm-gps-icon-32.png" alt=""> วางแผนปลูกปาล์ม</h1>
     <div class="sub">ปลูกแบบสามเหลี่ยมด้านเท่า 9 × 9 × 9 เมตร</div>
 
@@ -113,6 +119,7 @@
       4. ลากจุดสีเขียวเพื่อปรับตำแหน่งได้ ระบบจะเตือนเป็น<span style="color:#e53935;font-weight:700">สีแดง</span>หากระยะห่างน้อยกว่าค่าที่ตั้งไว้<br>
       5. แตะ/คลิกที่จุดแล้วกด "🗑 ลบต้นนี้" (หรือคลิกขวาเพื่อลบทันที) ลบผิดกด "↩ เลิกทำ" ได้
     </p>
+    </div>
   </div>
 
   <div id="map"></div>
