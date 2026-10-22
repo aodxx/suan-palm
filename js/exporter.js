@@ -178,6 +178,84 @@ function safePdfName(value) {
   return (value || 'ไม่มีชื่อแปลง').replace(/[\\/:*?"<>|\n\r]+/g, '-').trim().slice(0, 80) || 'ไม่มีชื่อแปลง';
 }
 
+// ฝังฟอนต์ Sarabun ลงใน PDF โดยตรง เพื่อให้ภาษาไทยแสดงผลได้สม่ำเสมอบนมือถือ
+let pdfFontPromise = null;
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function loadPdfFonts(pdf) {
+  if (!pdfFontPromise) {
+    pdfFontPromise = Promise.all([
+      fetch('assets/fonts/Sarabun-Regular.ttf').then(response => {
+        if (!response.ok) throw new Error('โหลด Sarabun Regular ไม่สำเร็จ');
+        return response.arrayBuffer();
+      }),
+      fetch('assets/fonts/Sarabun-Bold.ttf').then(response => {
+        if (!response.ok) throw new Error('โหลด Sarabun Bold ไม่สำเร็จ');
+        return response.arrayBuffer();
+      })
+    ]).then(([regular, bold]) => ({
+      regular: arrayBufferToBase64(regular),
+      bold: arrayBufferToBase64(bold)
+    }));
+  }
+  const fonts = await pdfFontPromise;
+  pdf.addFileToVFS('Sarabun-Regular.ttf', fonts.regular);
+  pdf.addFont('Sarabun-Regular.ttf', 'Sarabun', 'normal');
+  pdf.addFileToVFS('Sarabun-Bold.ttf', fonts.bold);
+  pdf.addFont('Sarabun-Bold.ttf', 'Sarabun', 'bold');
+  pdf.setFont('Sarabun', 'normal');
+}
+
+function drawPdfText(pdf, text, x, y, options = {}) {
+  const size = options.size || 12;
+  const maxWidth = options.maxWidth;
+  pdf.setFont('Sarabun', options.bold ? 'bold' : 'normal');
+  pdf.setFontSize(size);
+  pdf.setTextColor(...(options.color || [31, 41, 55]));
+  const lines = maxWidth ? pdf.splitTextToSize(String(text), maxWidth) : [String(text)];
+  pdf.text(lines, x, y);
+  return y + lines.length * (options.lineHeight || size * 0.45);
+}
+
+function pdfFooter(pdf, pageNumber) {
+  pdf.setFont('Sarabun', 'normal');
+  pdf.setFontSize(9);
+  pdf.setTextColor(107, 114, 128);
+  pdf.text('สวนปาล์ม • สร้างจากข้อมูลในเบราว์เซอร์ของผู้ใช้', 15, 288);
+  pdf.text('หน้า ' + pageNumber + '/2', 195, 288, { align: 'right' });
+}
+
+function addPdfSummaryTable(pdf, rows, startY) {
+  const x = 15;
+  const width = 180;
+  const labelWidth = 105;
+  const valueWidth = width - labelWidth;
+  let y = startY;
+  rows.forEach(([label, value], index) => {
+    const labelLines = pdf.splitTextToSize(String(label), labelWidth - 8);
+    const valueLines = pdf.splitTextToSize(String(value), valueWidth - 8);
+    const lineCount = Math.max(labelLines.length, valueLines.length);
+    const rowHeight = Math.max(11, lineCount * 6 + 5);
+    pdf.setFillColor(...(index % 2 ? [240, 247, 240] : [255, 255, 255]));
+    pdf.rect(x, y, width, rowHeight, 'F');
+    pdf.setDrawColor(203, 213, 225);
+    pdf.rect(x, y, labelWidth, rowHeight);
+    pdf.rect(x + labelWidth, y, valueWidth, rowHeight);
+    drawPdfText(pdf, labelLines.join('\n'), x + 4, y + 7, { size: 11, bold: true, maxWidth: labelWidth - 8 });
+    drawPdfText(pdf, valueLines.join('\n'), x + labelWidth + 4, y + 7, { size: 11, bold: true, maxWidth: valueWidth - 8 });
+    y += rowHeight;
+  });
+  return y;
+}
+
 async function exportPdf() {
   if (!trees.length || !currentFeature) {
     setStatus('กรุณาวาดพื้นที่และสร้างจุดปลูกก่อนดาวน์โหลด PDF', 'warn');
@@ -208,17 +286,48 @@ async function exportPdf() {
       }
     });
 
-    const metadata = exportMetadata();
-    const mapReport = await renderPdfElement(createMapReportPage(mapCanvas, metadata));
-    const summaryReport = await renderPdfElement(createSummaryReportPage(metadata));
-
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    await loadPdfFonts(pdf);
+    const metadata = exportMetadata();
     const pageWidth = 210;
-    const pageHeight = 297;
-    pdf.addImage(mapReport.toDataURL('image/png'), 'PNG', 0, 0, pageWidth, pageHeight);
+    pdf.setFillColor(27, 94, 32);
+    pdf.rect(0, 0, pageWidth, 9, 'F');
+    drawPdfText(pdf, 'แผนที่วางแผนปลูกปาล์ม', 15, 23, { size: 22, bold: true, color: [27, 94, 32] });
+    drawPdfText(pdf, 'แปลง: ' + metadata.plotName, 15, 32, { size: 14, bold: true, maxWidth: 180 });
+    drawPdfText(pdf, 'ตำแหน่ง: ' + metadata.address, 15, 40, { size: 11, color: [75, 85, 99], maxWidth: 180 });
+    drawPdfText(pdf, 'พิกัด: ' + (metadata.location ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6) : 'ไม่ทราบ'), 15, 47, { size: 11, color: [75, 85, 99] });
+    drawPdfText(pdf, 'วันที่สร้าง: ' + metadata.createdAt, 15, 54, { size: 11, color: [75, 85, 99] });
+    const mapWidth = 180;
+    const mapHeight = Math.min(190, mapWidth * mapCanvas.height / mapCanvas.width);
+    const mapY = 62;
+    pdf.setDrawColor(203, 213, 225);
+    pdf.rect(15, mapY, mapWidth, mapHeight);
+    pdf.addImage(mapCanvas.toDataURL('image/png'), 'PNG', 15, mapY, mapWidth, mapHeight, undefined, 'FAST');
+    drawPdfText(pdf, 'แผนที่และจุดปลูกสร้างจากข้อมูลในเบราว์เซอร์ของผู้ใช้', 15, mapY + mapHeight + 8, { size: 9, color: [107, 114, 128] });
+    pdfFooter(pdf, 1);
     pdf.addPage();
-    pdf.addImage(summaryReport.toDataURL('image/png'), 'PNG', 0, 0, pageWidth, pageHeight);
+    pdf.setFillColor(27, 94, 32);
+    pdf.rect(0, 0, pageWidth, 9, 'F');
+    drawPdfText(pdf, 'สรุปข้อมูลการวางแผนปลูกปาล์ม', 15, 24, { size: 22, bold: true, color: [27, 94, 32] });
+    drawPdfText(pdf, 'แปลง: ' + metadata.plotName, 15, 34, { size: 14, bold: true, maxWidth: 180 });
+    drawPdfText(pdf, 'ตำแหน่ง: ' + metadata.address, 15, 42, { size: 11, color: [75, 85, 99], maxWidth: 180 });
+    drawPdfText(pdf, 'วันที่สร้าง: ' + metadata.createdAt, 15, 49, { size: 11, color: [75, 85, 99] });
+    const area = m2ToThaiArea(currentAreaM2);
+    const rows = [
+      ['พื้นที่ (ตารางเมตร)', currentAreaM2.toLocaleString('th-TH', { maximumFractionDigits: 1 })],
+      ['พื้นที่ (ไร่)', String(area.rai)],
+      ['พื้นที่ (งาน)', String(area.ngan)],
+      ['พื้นที่ (ตารางวา)', area.wa.toFixed(2)],
+      ['จำนวนต้นทั้งหมด', trees.length.toLocaleString('th-TH') + ' ต้น'],
+      ['จำนวนต้นต่อไร่ (จริง)', (currentAreaM2 > 0 ? (trees.length / (currentAreaM2 / RAI_M2)).toFixed(2) : '–')],
+      ['จำนวนต้นต่อไร่ (ทฤษฎี)', TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')'],
+      ['ระยะห่างระหว่างแถว', ROW_SPACING.toFixed(3) + ' เมตร'],
+      ['พิกัดที่ใช้ส่งออก', metadata.location ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6) : 'ไม่ทราบ']
+    ];
+    addPdfSummaryTable(pdf, rows, 60);
+    drawPdfText(pdf, 'หมายเหตุ: ข้อมูลนี้เป็นผลคำนวณจากจุดปลูกที่สร้างและปรับตำแหน่งล่าสุด', 15, 245, { size: 10, color: [107, 114, 128], maxWidth: 180 });
+    pdfFooter(pdf, 2);
     const datePart = new Date().toISOString().slice(0, 10);
     pdf.save('palm-plan-' + safePdfName(metadata.plotName) + '-' + datePart + '.pdf');
     setStatus('✅ ดาวน์โหลดไฟล์เรียบร้อยแล้ว กรุณาตรวจสอบในโฟลเดอร์ Downloads', 'ok');
