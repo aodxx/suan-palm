@@ -52,9 +52,10 @@ const geocodeCache = new Map();
 
 function formatUserAddress(address) {
   if (!address) return 'ไม่ทราบตำแหน่ง';
-  const subdistrict = address.subdistrict ? 'ตำบล/แขวง' + address.subdistrict : '';
-  const district = address.district ? 'อำเภอ/เขต' + address.district : '';
-  const province = address.province ? 'จังหวัด' + address.province : '';
+  const clean = value => String(value || '').replace(/^(ตำบล|แขวง|อำเภอ|เขต|จังหวัด)\s*/u, '').trim();
+  const subdistrict = address.subdistrict ? 'ตำบล/แขวง' + clean(address.subdistrict) : '';
+  const district = address.district ? 'อำเภอ/เขต' + clean(address.district) : '';
+  const province = address.province ? 'จังหวัด' + clean(address.province) : '';
   return [subdistrict, district, province].filter(Boolean).join(' ') || 'ไม่ทราบตำแหน่ง';
 }
 
@@ -72,7 +73,7 @@ async function reverseGeocode(lat, lng) {
     updateLocationLabel();
     return;
   }
-  const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lng) + '&accept-language=th';
+  const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&layer=address&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lng) + '&accept-language=th';
   try {
     const response = await fetch(url, {
       headers: {
@@ -83,10 +84,12 @@ async function reverseGeocode(lat, lng) {
     if (!response.ok) throw new Error('Reverse geocoding HTTP ' + response.status);
     const data = await response.json();
     const a = data.address || {};
+    const isBangkok = a.city === 'กรุงเทพมหานคร' || a.province === 'กรุงเทพมหานคร';
     userAddress = {
-      subdistrict: a.village || a.suburb || a.hamlet || a.town || '',
-      district: a.city_district || a.county || '',
-      province: a.state || '',
+      // กรุงเทพฯ มักใช้ quarter=แขวง และ suburb=เขต; จังหวัดอื่นมักใช้ suburb/village/city_district
+      subdistrict: a.quarter || a.village || a.suburb || a.city_district || '',
+      district: a.county || a.district || (isBangkok ? a.suburb : '') || '',
+      province: a.state || a.province || (isBangkok ? a.city : '') || '',
       postcode: a.postcode || ''
     };
     geocodeCache.set(cacheKey, userAddress);
