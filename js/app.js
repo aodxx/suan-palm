@@ -197,6 +197,7 @@ async function reverseGeocode(lat, lng, target = 'user') {
     setStatus((target === 'plot' ? 'บันทึกพิกัดแปลงแล้ว แต่ค้นหาชื่อพื้นที่ไม่สำเร็จ' : 'ได้พิกัดมือถือแล้ว แต่ค้นหาชื่อพื้นที่ไม่สำเร็จ') + ' สามารถใช้งานต่อได้', 'warn');
   }
   updateLocationLabel();
+  saveDraft();
 }
 
 function requestUserLocation() {
@@ -220,6 +221,7 @@ function requestUserLocation() {
       radius: 6, color: '#fff', weight: 2, fillColor: '#1976d2', fillOpacity: 1
     }).bindTooltip('ตำแหน่งของฉัน').addTo(map);
     updateLocationLabel();
+    saveDraft();
     reverseGeocode(userLocation.lat, userLocation.lng);
     setStatus('ได้รับตำแหน่งแล้ว กรุณาวาดขอบเขตแปลงของคุณ');
     if (button) {
@@ -258,23 +260,21 @@ function beginPickPlotLocation() {
 
 function savePlotLocation(latlng) {
   plotLocation = { lat: latlng.lat, lng: latlng.lng };
-  if (plotLocationMarker) map.removeLayer(plotLocationMarker);
-  plotLocationMarker = L.marker([latlng.lat, latlng.lng], {
-    icon: L.divIcon({ className: 'plot-center-marker', html: '📌', iconSize: [30, 30], iconAnchor: [15, 30] })
-  }).bindTooltip('กึ่งกลางแปลง', { direction: 'top', offset: [0, -24] }).addTo(map);
+  renderPlotLocationMarker();
   pickingPlotLocation = false;
   $('map').classList.remove('is-picking-plot');
   $('btnPickPlot').textContent = '📌 ชี้ตำแหน่งกึ่งกลางแปลงอีกครั้ง';
   plotAddress = null;
   updateLocationLabel();
   reverseGeocode(plotLocation.lat, plotLocation.lng, 'plot');
+  saveDraft();
   setStatus('บันทึกตำแหน่งกึ่งกลางแปลงแล้ว', 'ok');
 }
 
 $('btnLocate').addEventListener('click', requestUserLocation);
 $('btnPickPlot').addEventListener('click', beginPickPlotLocation);
-$('plotName').addEventListener('input', updateCount);
-$('seedlingPrice').addEventListener('input', updateSeedlingCost);
+$('plotName').addEventListener('input', () => { updateCount(); saveDraft(); });
+$('seedlingPrice').addEventListener('input', () => { updateSeedlingCost(); saveDraft(); });
 $('spacing').addEventListener('change', () => {
   const value = getConfiguredSpacing();
   $('spacing').value = value;
@@ -287,8 +287,11 @@ $('spacing').addEventListener('change', () => {
     clearGrid();
   }
   updateSpacingSummary();
+  saveDraft();
   setStatus('ตั้งระยะห่างระหว่างต้นเป็น ' + value.toFixed(1) + ' เมตรแล้ว กรุณากดสร้างจุดปลูก', 'ok');
 });
+$('rotation').addEventListener('change', saveDraft);
+$('margin').addEventListener('change', saveDraft);
 
 $('treePerRai').textContent = TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')';
 $('rowSpacing').textContent = ROW_SPACING.toFixed(3) + ' ม.';
@@ -300,6 +303,116 @@ let origin = null;           // {lng0, lat0, mLng, mLat} สำหรับแ�
 let trees = [];              // [{marker, x, y}]  x,y เป็นเมตรในระบบพิกัดท้องถิ่น
 let hash = new Map();        // Spatial hash สำหรับหาเพื่อนบ้านเร็ว ๆ
 let lastGeneratedSpacing = SPACING;
+
+// ---------- บันทึกข้อมูลแปลงไว้ในอุปกรณ์ของผู้ใช้ ----------
+const STORAGE_KEY = 'suan-palm-draft-v1';
+let restoringDraft = false;
+
+function setStorageStatus(text) {
+  const el = $('storageStatus');
+  if (el) el.textContent = text;
+}
+
+function saveDraft() {
+  if (restoringDraft) return;
+  try {
+    const draft = {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      plotName: $('plotName').value || '',
+      seedlingPrice: $('seedlingPrice').value || '',
+      spacing: $('spacing').value || String(SPACING),
+      rotation: $('rotation').value || '0',
+      margin: $('margin').value || '0',
+      feature: currentFeature,
+      plotLocation,
+      plotAddress,
+      userLocation,
+      userAddress,
+      generatedSpacing: lastGeneratedSpacing,
+      trees: trees.map(t => {
+        const ll = t.marker.getLatLng();
+        return { lat: ll.lat, lng: ll.lng, bad: Boolean(t.bad) };
+      })
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    setStorageStatus('บันทึกข้อมูลอัตโนมัติแล้วในอุปกรณ์นี้ · ' + new Date().toLocaleTimeString('th-TH'));
+  } catch (error) {
+    console.warn('LocalStorage save failed:', error);
+    setStorageStatus('ไม่สามารถบันทึกข้อมูลในอุปกรณ์นี้ได้');
+  }
+}
+
+function renderPlotLocationMarker() {
+  if (!plotLocation) return;
+  if (plotLocationMarker) map.removeLayer(plotLocationMarker);
+  plotLocationMarker = L.marker([plotLocation.lat, plotLocation.lng], {
+    icon: L.divIcon({ className: 'plot-center-marker', html: '📌', iconSize: [30, 30], iconAnchor: [15, 30] })
+  }).bindTooltip('กึ่งกลางแปลง', { direction: 'top', offset: [0, -24] }).addTo(map);
+}
+
+function createTreeMarker(lat, lng, bad = false) {
+  const icon = L.divIcon({ className: '', html: '<div class="tree-dot"></div>', iconSize: [12, 12], iconAnchor: [6, 6] });
+  const marker = L.marker([lat, lng], { icon, draggable: true }).addTo(gridLayer);
+  const [x, y] = toXY(lng, lat);
+  const tree = { marker, x, y, bad: Boolean(bad) };
+  marker._tree = tree;
+  if (bad) setTimeout(() => setBad(tree, true), 0);
+  trees.push(tree);
+  return tree;
+}
+
+function restoreDraft() {
+  let draft;
+  try {
+    draft = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+  } catch (error) {
+    console.warn('LocalStorage read failed:', error);
+    return;
+  }
+  if (!draft || draft.version !== 1) return;
+  restoringDraft = true;
+  try {
+    $('plotName').value = draft.plotName || '';
+    $('seedlingPrice').value = draft.seedlingPrice || '';
+    $('spacing').value = draft.spacing || String(SPACING);
+    $('rotation').value = draft.rotation || '0';
+    $('margin').value = draft.margin || '0';
+    plotLocation = draft.plotLocation || null;
+    plotAddress = draft.plotAddress || null;
+    userLocation = draft.userLocation || null;
+    userAddress = draft.userAddress || null;
+    lastGeneratedSpacing = Number.isFinite(Number(draft.generatedSpacing)) ? Number(draft.generatedSpacing) : getConfiguredSpacing();
+
+    if (draft.feature && draft.feature.geometry) {
+      const layer = L.geoJSON(draft.feature, { style: PLOT_BOUNDARY_STYLE }).getLayers()[0];
+      if (layer) {
+        drawnItems.addLayer(layer);
+        updateArea();
+        const [lng, lat] = turf.centroid(draft.feature).geometry.coordinates;
+        origin = makeOrigin(lat, lng);
+        (Array.isArray(draft.trees) ? draft.trees : []).forEach(t => {
+          if (Number.isFinite(t.lat) && Number.isFinite(t.lng)) createTreeMarker(t.lat, t.lng, t.bad);
+        });
+        rebuildHash();
+        updateCount();
+        recheckAll();
+      }
+    }
+    if (userLocation) {
+      userLocationMarker = L.circleMarker([userLocation.lat, userLocation.lng], {
+        radius: 6, color: '#fff', weight: 2, fillColor: '#1976d2', fillOpacity: 1
+      }).bindTooltip('ตำแหน่งของฉัน').addTo(map);
+    }
+    renderPlotLocationMarker();
+    updateLocationLabel();
+    updateSpacingSummary();
+    setStorageStatus('กู้คืนข้อมูลแปลงล่าสุดแล้ว · ' + (draft.savedAt ? new Date(draft.savedAt).toLocaleString('th-TH') : 'ข้อมูลในเครื่อง'));
+    setStatus('กู้คืนข้อมูลแปลงจากการใช้งานครั้งล่าสุดแล้ว', 'ok');
+  } finally {
+    restoringDraft = false;
+  }
+}
 
 // ---------- แปลงพิกัดองศา <-> เมตร (Local Equirectangular) ----------
 // 1° ละติจูด ≈ 111,132.92 − 559.82·cos(2φ) + 1.175·cos(4φ)  เมตร
@@ -511,19 +624,16 @@ function generateGrid() {
   lastGeneratedSpacing = spacing;
 
   // สร้าง Marker (ลากได้) — เหตุการณ์ลาก/คลิกจัดการที่ gridLayer ครั้งเดียว
-  const icon = L.divIcon({ className: '', html: '<div class="tree-dot"></div>', iconSize: [12, 12], iconAnchor: [6, 6] });
   pts.forEach(p => {
     const [lng, lat] = toLngLat(p.x, p.y);
-    const marker = L.marker([lat, lng], { icon, draggable: true }).addTo(gridLayer);
-    const t = { marker, x: p.x, y: p.y, bad: false };
-    marker._tree = t;
-    trees.push(t);
+    createTreeMarker(lat, lng);
   });
 
   rebuildHash();
   updateCount();
   const price = getSeedlingPrice();
   const costText = price !== null ? ' ค่าต้นกล้าประมาณ ' + formatBaht(price * trees.length) : '';
+  saveDraft();
   setStatus('✅ สร้างจุดปลูกสำเร็จทั้งหมด ' + trees.length.toLocaleString('th-TH') + ' ต้น (ระยะห่าง ' + spacing.toFixed(1) + ' เมตร).' + costText, 'ok');
 }
 
@@ -533,7 +643,7 @@ function removeTree(t) {
   removed.push(t);
   if (removed.length > 100) removed.shift();
   map.closePopup();
-  rebuildHash(); updateCount(); recheckAll();
+  rebuildHash(); updateCount(); recheckAll(); saveDraft();
 }
 function undoRemove() {
   const t = removed.pop();
@@ -541,7 +651,7 @@ function undoRemove() {
   t.bad = false;                       // marker ถูกสร้างใหม่ จึงเริ่มเป็นสีเขียว
   gridLayer.addLayer(t.marker);
   trees.push(t);
-  rebuildHash(); updateCount(); recheckAll();
+  rebuildHash(); updateCount(); recheckAll(); saveDraft();
 }
 function openDeletePopup(t) {
   const div = document.createElement('div');
@@ -601,14 +711,17 @@ map.on(L.Draw.Event.CREATED, e => {
   clearGrid();
   drawnItems.addLayer(e.layer);
   updateArea();
+  saveDraft();
   setStatus('กดปุ่ม "🌴 สร้างจุดปลูกปาล์ม" เพื่อสร้างจุดปลูก');
 });
 map.on(L.Draw.Event.EDITED, () => {
   clearGrid(); updateArea();
+  saveDraft();
   setStatus('แก้ไขขอบเขตแล้ว กรุณากด "🌴 สร้างจุดปลูกปาล์ม" ใหม่');
 });
 map.on(L.Draw.Event.DELETED, () => {
   clearGrid(); updateArea();
+  saveDraft();
   setStatus('ลบขอบเขตแล้ว วาด Polygon ใหม่ได้เลย');
 });
 
@@ -632,6 +745,8 @@ $('btnClear').addEventListener('click', () => {
   $('btnPickPlot').textContent = '📌 ชี้ตำแหน่งกึ่งกลางแปลง';
   updateLocationLabel();
   updateArea();
+  localStorage.removeItem(STORAGE_KEY);
+  setStorageStatus('ล้างข้อมูลที่บันทึกไว้ในอุปกรณ์แล้ว');
   setStatus('ล้างข้อมูลแล้ว');
 });
 $('btnCenter').addEventListener('click', () => {
@@ -646,7 +761,7 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); undoRemove(); }
 });
 gridLayer.on('drag',        e => onDrag(e.layer._tree));
-gridLayer.on('dragend',     () => { map.removeLayer(dragTip); guideLine.setLatLngs([]); rebuildHash(); recheckAll(); });
+gridLayer.on('dragend',     () => { map.removeLayer(dragTip); guideLine.setLatLngs([]); rebuildHash(); recheckAll(); saveDraft(); });
 gridLayer.on('click',       e => openDeletePopup(e.layer._tree));   // แตะ/คลิก → ปุ่มลบ (ใช้บนมือถือได้)
 gridLayer.on('contextmenu', e => removeTree(e.layer._tree));        // คลิกขวา → ลบทันที
 
@@ -672,3 +787,6 @@ map.whenReady(() => {
     }
   });
 });
+
+// กู้คืนข้อมูลล่าสุดหลังประกาศ event และฟังก์ชันทั้งหมดแล้ว
+restoreDraft();
