@@ -30,6 +30,7 @@ function exportLocation() {
 function exportMetadata() {
   const location = exportLocation();
   const seedlingPrice = getSeedlingPrice();
+  const spacing = getSpacingMetrics(lastGeneratedSpacing);
   return {
     plotName: ($('plotName').value || '').trim() || 'ไม่ได้ระบุ',
     address: plotLocation ? formatUserAddress(plotAddress) : (userLocation ? formatUserAddress(userAddress) : 'ไม่ทราบตำแหน่ง'),
@@ -41,6 +42,9 @@ function exportMetadata() {
     postcode: userAddress && userAddress.postcode ? userAddress.postcode : '',
     seedlingPrice,
     seedlingTotal: seedlingPrice !== null ? seedlingPrice * trees.length : null,
+    spacing: spacing.spacing,
+    rowSpacing: spacing.rowSpacing,
+    treesPerRai: spacing.treesPerRai,
     createdAt: new Date().toLocaleDateString('th-TH', {
       day: 'numeric', month: 'long', year: 'numeric'
     })
@@ -72,6 +76,8 @@ $('btnGeoJSON').addEventListener('click', () => {
     รหัสไปรษณีย์: metadata.postcode,
     ราคาต้นกล้าต่อต้นบาท: metadata.seedlingPrice,
     ค่าต้นกล้ารวมบาท: metadata.seedlingTotal,
+    ระยะห่างระหว่างต้นเมตร: metadata.spacing,
+    ระยะห่างระหว่างแถวเมตร: metadata.rowSpacing,
     วันที่สร้าง: metadata.createdAt
   };
   download('palm-plan.geojson', 'application/geo+json', JSON.stringify(fc, null, 2));
@@ -87,6 +93,8 @@ $('btnCSV').addEventListener('click', () => {
     '# รหัสไปรษณีย์: ' + csvCell(metadata.postcode || 'ไม่ระบุ'),
     '# ราคาต้นกล้า/ต้น: ' + csvCell(metadata.seedlingPrice !== null ? formatBaht(metadata.seedlingPrice) : 'ไม่ระบุ'),
     '# ค่าต้นกล้ารวม: ' + csvCell(metadata.seedlingTotal !== null ? formatBaht(metadata.seedlingTotal) : 'ไม่ระบุ'),
+    '# ระยะห่างระหว่างต้น: ' + csvCell(metadata.spacing.toFixed(1) + ' เมตร'),
+    '# ระยะห่างระหว่างแถว: ' + csvCell(metadata.rowSpacing.toFixed(3) + ' เมตร'),
     '# วันที่สร้าง: ' + csvCell(metadata.createdAt)
   ];
   const rows = ['id,lat,lng'].concat(currentPoints().map(p =>
@@ -177,8 +185,9 @@ function createSummaryReportPage(metadata) {
     ['พื้นที่ (ตารางวา)', area.wa.toFixed(2)],
     ['จำนวนต้นทั้งหมด', trees.length.toLocaleString('th-TH') + ' ต้น'],
     ['จำนวนต้นต่อไร่ (จริง)', (currentAreaM2 > 0 ? (trees.length / (currentAreaM2 / RAI_M2)).toFixed(2) : '–')],
-    ['จำนวนต้นต่อไร่ (ทฤษฎี)', TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')'],
-    ['ระยะห่างระหว่างแถว', ROW_SPACING.toFixed(3) + ' เมตร'],
+    ['จำนวนต้นต่อไร่ (ทฤษฎี)', metadata.treesPerRai.toFixed(2) + ' (ปลูกได้ ' + Math.floor(metadata.treesPerRai) + ')'],
+    ['ระยะห่างระหว่างต้น', metadata.spacing.toFixed(1) + ' เมตร'],
+    ['ระยะห่างระหว่างแถว', metadata.rowSpacing.toFixed(3) + ' เมตร'],
     ['พิกัดที่ใช้ส่งออก', metadata.location ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6) : 'ไม่ทราบ']
   ];
 
@@ -348,8 +357,9 @@ async function exportPdf() {
       ['พื้นที่ (ตารางวา)', area.wa.toFixed(2)],
       ['จำนวนต้นทั้งหมด', trees.length.toLocaleString('th-TH') + ' ต้น'],
       ['จำนวนต้นต่อไร่ (จริง)', (currentAreaM2 > 0 ? (trees.length / (currentAreaM2 / RAI_M2)).toFixed(2) : '–')],
-      ['จำนวนต้นต่อไร่ (ทฤษฎี)', TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')'],
-      ['ระยะห่างระหว่างแถว', ROW_SPACING.toFixed(3) + ' เมตร'],
+      ['จำนวนต้นต่อไร่ (ทฤษฎี)', metadata.treesPerRai.toFixed(2) + ' (ปลูกได้ ' + Math.floor(metadata.treesPerRai) + ')'],
+      ['ระยะห่างระหว่างต้น', metadata.spacing.toFixed(1) + ' เมตร'],
+      ['ระยะห่างระหว่างแถว', metadata.rowSpacing.toFixed(3) + ' เมตร'],
       ['ราคาต้นกล้า/ต้น', metadata.seedlingPrice !== null ? formatBaht(metadata.seedlingPrice) : 'ไม่ระบุ'],
       ['ค่าต้นกล้ารวม', metadata.seedlingTotal !== null ? formatBaht(metadata.seedlingTotal) : 'ไม่ระบุ'],
       ['พิกัดแปลงที่ใช้ส่งออก', metadata.location ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6) : 'ไม่ทราบ'],
@@ -408,8 +418,9 @@ function printReportTemplate(metadata, data, mapImage) {
     ['พื้นที่ (ตารางวา)', data.area.wa.toFixed(2)],
     ['จำนวนต้นทั้งหมด', data.treeCount + ' ต้น'],
     ['จำนวนต้นต่อไร่ (จริง)', data.density],
-    ['จำนวนต้นต่อไร่ (ทฤษฎี)', TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')'],
-    ['ระยะห่างระหว่างแถว', ROW_SPACING.toFixed(3) + ' เมตร'],
+    ['จำนวนต้นต่อไร่ (ทฤษฎี)', metadata.treesPerRai.toFixed(2) + ' (ปลูกได้ ' + Math.floor(metadata.treesPerRai) + ')'],
+    ['ระยะห่างระหว่างต้น', metadata.spacing.toFixed(1) + ' เมตร'],
+    ['ระยะห่างระหว่างแถว', metadata.rowSpacing.toFixed(3) + ' เมตร'],
     ['ราคาต้นกล้า/ต้น', data.seedlingPrice],
     ['ค่าต้นกล้ารวม', data.seedlingTotal],
     ['พิกัดแปลงที่ใช้ส่งออก', data.center],

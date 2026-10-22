@@ -27,6 +27,21 @@ const AREA_PER_TREE = SPACING * ROW_SPACING;            // ≈ 70.148 ตร.ม
 const RAI_M2 = 1600;
 const TREES_PER_RAI = RAI_M2 / AREA_PER_TREE;           // ≈ 22.81
 
+// สูตรแบบปรับระยะได้: ใช้เมื่อผู้ใช้กำหนดระยะใหม่จากหน้าจอ
+// ค่าเริ่มต้นยังคงเป็น SPACING = 9 เมตร และสูตรสามเหลี่ยมด้านเท่าเดิม
+function rowSpacingFor(spacing) {
+  return spacing * Math.sin(Math.PI / 3);
+}
+function areaPerTreeFor(spacing) {
+  return spacing * rowSpacingFor(spacing);
+}
+function treesPerRaiFor(spacing) {
+  return RAI_M2 / areaPerTreeFor(spacing);
+}
+window.rowSpacingFor = rowSpacingFor;
+window.areaPerTreeFor = areaPerTreeFor;
+window.treesPerRaiFor = treesPerRaiFor;
+
 /* ---------------------------------------------------------------------
  * 3) แปลงพื้นที่ (ตร.ม.) → ไร่ งาน ตารางวา
  *    1 ตารางวา = 4 ตร.ม.

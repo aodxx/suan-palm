@@ -100,6 +100,30 @@ function updateSeedlingCost() {
     : '–';
 }
 
+function getConfiguredSpacing() {
+  const value = parseFloat($('spacing')?.value);
+  return Number.isFinite(value) && value >= 3 && value <= 20 ? value : SPACING;
+}
+
+function getSpacingMetrics(spacing = getConfiguredSpacing()) {
+  const rowSpacing = spacing * Math.sin(Math.PI / 3);
+  return {
+    spacing,
+    rowSpacing,
+    areaPerTree: spacing * rowSpacing,
+    treesPerRai: RAI_M2 / (spacing * rowSpacing)
+  };
+}
+
+function updateSpacingSummary() {
+  const metrics = getSpacingMetrics();
+  $('rowSpacing').textContent = metrics.rowSpacing.toFixed(3) + ' ม.';
+  $('treePerRai').textContent = metrics.treesPerRai.toFixed(2) + ' (ปลูกได้ ' + Math.floor(metrics.treesPerRai) + ')';
+  if (currentFeature) {
+    $('treeEst').textContent = Math.floor(currentAreaM2 / metrics.areaPerTree).toLocaleString('th-TH') + ' ต้น';
+  }
+}
+
 // [เพิ่ม] ตำแหน่งและที่อยู่ของผู้ใช้ เก็บไว้ในหน่วยความจำเท่านั้น ไม่ส่งไปเซิร์ฟเวอร์ของโปรเจกต์
 let userLocation = null;
 let userAddress = null;
@@ -245,6 +269,20 @@ $('btnLocate').addEventListener('click', requestUserLocation);
 $('btnPickPlot').addEventListener('click', beginPickPlotLocation);
 $('plotName').addEventListener('input', updateCount);
 $('seedlingPrice').addEventListener('input', updateSeedlingCost);
+$('spacing').addEventListener('change', () => {
+  const value = getConfiguredSpacing();
+  $('spacing').value = value;
+  if (trees.length && value !== lastGeneratedSpacing) {
+    if (!confirm('การเปลี่ยนระยะห่างจะล้างจุดปลูกเดิม เพื่อสร้างกริดใหม่ ต้องการดำเนินการต่อหรือไม่?')) {
+      $('spacing').value = lastGeneratedSpacing;
+      updateSpacingSummary();
+      return;
+    }
+    clearGrid();
+  }
+  updateSpacingSummary();
+  setStatus('ตั้งระยะห่างระหว่างต้นเป็น ' + value.toFixed(1) + ' เมตรแล้ว กรุณากดสร้างจุดปลูก', 'ok');
+});
 
 $('treePerRai').textContent = TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')';
 $('rowSpacing').textContent = ROW_SPACING.toFixed(3) + ' ม.';
@@ -255,6 +293,7 @@ let currentAreaM2 = 0;       // พื้นที่ (ตร.ม.)
 let origin = null;           // {lng0, lat0, mLng, mLat} สำหรับแปลงองศา <-> เมตร
 let trees = [];              // [{marker, x, y}]  x,y เป็นเมตรในระบบพิกัดท้องถิ่น
 let hash = new Map();        // Spatial hash สำหรับหาเพื่อนบ้านเร็ว ๆ
+let lastGeneratedSpacing = SPACING;
 
 // ---------- แปลงพิกัดองศา <-> เมตร (Local Equirectangular) ----------
 // 1° ละติจูด ≈ 111,132.92 − 559.82·cos(2φ) + 1.175·cos(4φ)  เมตร
@@ -270,9 +309,9 @@ function makeOrigin(lat0, lng0) {
 const toXY     = (lng, lat) => [(lng - origin.lng0) * origin.mLng, (lat - origin.lat0) * origin.mLat];
 const toLngLat = (x, y)     => [origin.lng0 + x / origin.mLng, origin.lat0 + y / origin.mLat];
 
-// ---------- Spatial hash (ช่องละ SPACING เมตร) ----------
+// ---------- Spatial hash (ช่องละระยะที่ผู้ใช้กำหนด) ----------
 // ทำให้การหาเพื่อนบ้านใกล้สุดเป็น O(1) ต่อจุด แทน O(n) → ตรวจทั้งแปลงเป็น O(n)
-const cellKey = (x, y) => Math.floor(x / SPACING) + ',' + Math.floor(y / SPACING);
+const cellKey = (x, y, spacing = lastGeneratedSpacing) => Math.floor(x / spacing) + ',' + Math.floor(y / spacing);
 function rebuildHash() {
   hash = new Map();
   for (const t of trees) {
@@ -283,7 +322,8 @@ function rebuildHash() {
 }
 // หาต้นที่ใกล้ที่สุดภายในรัศมี 2 ช่อง (≈ 18 ม.)
 function nearestOf(t) {
-  const cx = Math.floor(t.x / SPACING), cy = Math.floor(t.y / SPACING);
+  const spacing = lastGeneratedSpacing;
+  const cx = Math.floor(t.x / spacing), cy = Math.floor(t.y / spacing);
   let best = Infinity, bestT = null;
   for (let dx = -2; dx <= 2; dx++) {
     for (let dy = -2; dy <= 2; dy++) {
@@ -334,7 +374,7 @@ function updateArea() {
   $('areaRai').textContent  = rai;
   $('areaNgan').textContent = ngan;
   $('areaWa').textContent   = wa.toFixed(2);
-  $('treeEst').textContent  = Math.floor(currentAreaM2 / AREA_PER_TREE).toLocaleString('th-TH') + ' ต้น';
+  $('treeEst').textContent  = Math.floor(currentAreaM2 / getSpacingMetrics().areaPerTree).toLocaleString('th-TH') + ' ต้น';
   $('btnGenerate').disabled = false;
 }
 
@@ -384,6 +424,10 @@ function insidePolys(x, y, polys) {
 function generateGrid() {
   if (!currentFeature) return;
 
+  const metrics = getSpacingMetrics();
+  const spacing = metrics.spacing;
+  const rowSpacing = metrics.rowSpacing;
+
   const [clng, clat] = turf.centroid(currentFeature).geometry.coordinates;
   origin = makeOrigin(clat, clng);
 
@@ -416,7 +460,7 @@ function generateGrid() {
 
   // ทดสอบ "จุดอยู่ในแปลง" เป็นเมตรด้วยฟังก์ชันของเราเอง (เร็วกว่าเรียก turf ทีละจุดหลายเท่า)
   const polys = regionToXY(region);
-  const candidates = ((maxX - minX) / SPACING) * ((maxY - minY) / ROW_SPACING);
+  const candidates = ((maxX - minX) / spacing) * ((maxY - minY) / rowSpacing);
   if (candidates > MAX_CANDIDATES) {
     setStatus('พื้นที่ใหญ่เกินไป กรุณาวาดพื้นที่ให้เล็กลง', 'warn');
     return;
@@ -429,17 +473,17 @@ function generateGrid() {
    *   offset    = 0 ถ้า j เป็นเลขคู่ / s/2 ถ้า j เป็นเลขคี่ (แถวเยื้องกันเป็นสามเหลี่ยมด้านเท่า)
    * แล้วหมุนกลับ (+θ) และเก็บเฉพาะจุดที่อยู่ในแปลง
    * ------------------------------------------------------------------- */
-  const jMin = Math.floor(minY / ROW_SPACING) - 1;
-  const jMax = Math.ceil(maxY / ROW_SPACING) + 1;
-  const iMin = Math.floor(minX / SPACING) - 1;
-  const iMax = Math.ceil(maxX / SPACING) + 1;
+  const jMin = Math.floor(minY / rowSpacing) - 1;
+  const jMax = Math.ceil(maxY / rowSpacing) + 1;
+  const iMin = Math.floor(minX / spacing) - 1;
+  const iMax = Math.ceil(maxX / spacing) + 1;
 
   const pts = [];
   for (let j = jMin; j <= jMax; j++) {
-    const offset = (((j % 2) + 2) % 2) * (SPACING / 2);
-    const gy = j * ROW_SPACING;
+    const offset = (((j % 2) + 2) % 2) * (spacing / 2);
+    const gy = j * rowSpacing;
     for (let i = iMin; i <= iMax; i++) {
-      const gx = i * SPACING + offset;
+      const gx = i * spacing + offset;
       if (gx < minX || gx > maxX || gy < minY || gy > maxY) continue;
       const x = gx * cos - gy * sin;             // หมุนกลับ +θ
       const y = gx * sin + gy * cos;
@@ -458,6 +502,7 @@ function generateGrid() {
 
   // ล้างจุดเดิมหลังตรวจสอบทุกเงื่อนไขผ่านแล้วเท่านั้น
   clearGrid();
+  lastGeneratedSpacing = spacing;
 
   // สร้าง Marker (ลากได้) — เหตุการณ์ลาก/คลิกจัดการที่ gridLayer ครั้งเดียว
   const icon = L.divIcon({ className: '', html: '<div class="tree-dot"></div>', iconSize: [12, 12], iconAnchor: [6, 6] });
@@ -473,7 +518,7 @@ function generateGrid() {
   updateCount();
   const price = getSeedlingPrice();
   const costText = price !== null ? ' ค่าต้นกล้าประมาณ ' + formatBaht(price * trees.length) : '';
-  setStatus('✅ สร้างจุดปลูกสำเร็จทั้งหมด ' + trees.length.toLocaleString('th-TH') + ' ต้น (ระยะห่าง 9 เมตร).' + costText, 'ok');
+  setStatus('✅ สร้างจุดปลูกสำเร็จทั้งหมด ' + trees.length.toLocaleString('th-TH') + ' ต้น (ระยะห่าง ' + spacing.toFixed(1) + ' เมตร).' + costText, 'ok');
 }
 
 function removeTree(t) {
@@ -512,7 +557,7 @@ function onDrag(t) {
   const ll = t.marker.getLatLng();
   [t.x, t.y] = toXY(ll.lng, ll.lat);
   const { d, other } = nearestOf(t);
-  const bad = !!other && d < SPACING - TOL;
+  const bad = !!other && d < lastGeneratedSpacing - TOL;
   setBad(t, bad);
   dragTip.setLatLng(ll);
   if (!map.hasLayer(dragTip)) map.addLayer(dragTip);
@@ -532,7 +577,7 @@ function onDrag(t) {
 function recheckAll() {
   let n = 0;
   for (const t of trees) {
-    const bad = nearestOf(t).d < SPACING - TOL;
+    const bad = nearestOf(t).d < lastGeneratedSpacing - TOL;
     if (bad) n++;
     setBad(t, bad);
   }
