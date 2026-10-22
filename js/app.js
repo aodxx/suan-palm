@@ -47,8 +47,8 @@ function setStatus(text, cls) { statusEl.textContent = text; statusEl.className 
 // [เพิ่ม] ตำแหน่งและที่อยู่ของผู้ใช้ เก็บไว้ในหน่วยความจำเท่านั้น ไม่ส่งไปเซิร์ฟเวอร์ของโปรเจกต์
 let userLocation = null;
 let userAddress = null;
-let locationRequested = false;
 let userLocationMarker = null;
+const geocodeCache = new Map();
 
 function formatUserAddress(address) {
   if (!address) return 'ไม่ทราบตำแหน่ง';
@@ -66,6 +66,12 @@ function updateLocationLabel() {
 
 async function reverseGeocode(lat, lng) {
   // Nominatim ต้องการการระบุแอป; เบราว์เซอร์บางตัวอาจละเว้น User-Agent header แบบกำหนดเอง
+  const cacheKey = lat.toFixed(5) + ',' + lng.toFixed(5);
+  if (geocodeCache.has(cacheKey)) {
+    userAddress = geocodeCache.get(cacheKey);
+    updateLocationLabel();
+    return;
+  }
   const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lng) + '&accept-language=th';
   try {
     const response = await fetch(url, {
@@ -83,6 +89,7 @@ async function reverseGeocode(lat, lng) {
       province: a.state || '',
       postcode: a.postcode || ''
     };
+    geocodeCache.set(cacheKey, userAddress);
   } catch (error) {
     console.warn('Reverse geocoding failed:', error);
     userAddress = null;
@@ -91,30 +98,43 @@ async function reverseGeocode(lat, lng) {
 }
 
 function requestUserLocation() {
-  if (locationRequested || !navigator.geolocation) {
-    updateLocationLabel();
+  const button = $('btnLocate');
+  if (!navigator.geolocation) {
+    setStatus('เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง กรุณาวาดพื้นที่ด้วยตนเอง', 'warn');
     return;
   }
-  locationRequested = true;
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'กำลังขอตำแหน่ง...';
+  }
   setStatus('กำลังขออนุญาตใช้ตำแหน่ง เพื่อแสดงแผนที่บริเวณที่คุณอยู่...');
   navigator.geolocation.getCurrentPosition(position => {
     userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
     map.setView([userLocation.lat, userLocation.lng], 16);
+    if (userLocationMarker) map.removeLayer(userLocationMarker);
     userLocationMarker = L.circleMarker([userLocation.lat, userLocation.lng], {
       radius: 6, color: '#fff', weight: 2, fillColor: '#1976d2', fillOpacity: 1
     }).bindTooltip('ตำแหน่งของฉัน').addTo(map);
     updateLocationLabel();
     reverseGeocode(userLocation.lat, userLocation.lng);
     setStatus('ได้รับตำแหน่งแล้ว กรุณาวาดขอบเขตแปลงของคุณ');
+    if (button) {
+      button.disabled = false;
+      button.textContent = '📍 ดึงตำแหน่งของฉันอีกครั้ง';
+    }
   }, () => {
     userLocation = null;
     userAddress = null;
     updateLocationLabel();
-    setStatus('ไม่ได้รับอนุญาตตำแหน่ง ระบบจะใช้แผนที่ประเทศไทยเป็นค่าเริ่มต้น');
+    setStatus('ยังไม่ได้รับอนุญาตตำแหน่ง กดปุ่มเดิมอีกครั้งหรือตรวจสอบสิทธิ์ Location ของเบราว์เซอร์', 'warn');
+    if (button) {
+      button.disabled = false;
+      button.textContent = '📍 อนุญาตและใช้ตำแหน่งของฉัน';
+    }
   }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
 }
 
-requestUserLocation();
+$('btnLocate').addEventListener('click', requestUserLocation);
 
 $('treePerRai').textContent = TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')';
 $('rowSpacing').textContent = ROW_SPACING.toFixed(3) + ' ม.';
