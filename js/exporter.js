@@ -298,18 +298,18 @@ async function printReport() {
     setStatus('กรุณาวาดพื้นที่และสร้างจุดปลูกก่อนพิมพ์รายงาน', 'warn');
     return;
   }
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    setStatus('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต Pop-up แล้วลองใหม่', 'warn');
-    return;
-  }
   const button = $('btnPrint');
   const oldText = button.textContent;
   button.disabled = true;
   button.textContent = 'กำลังเตรียมรายงาน...';
+  let printSheet = null;
+  const restorePage = () => {
+    document.body.classList.remove('is-printing');
+    if (printSheet) printSheet.remove();
+    button.disabled = false;
+    button.textContent = oldText;
+  };
   try {
-    printWindow.document.write('<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>รายงานแผนการปลูกปาล์ม</title>' + printReportStyles() + '</head><body><div id="printRoot">กำลังเตรียมรายงาน...</div></body></html>');
-    printWindow.document.close();
     map.invalidateSize();
     await waitForMapTiles();
     const mapCanvas = await html2canvas($('map'), {
@@ -318,20 +318,25 @@ async function printReport() {
     });
     const metadata = exportMetadata();
     const data = printReportData(metadata);
-    printWindow.document.getElementById('printRoot').innerHTML = printReportTemplate(metadata, data, mapCanvas.toDataURL('image/png'));
-    const image = printWindow.document.querySelector('.map-image');
+    printSheet = document.createElement('div');
+    printSheet.id = 'printSheet';
+    printSheet.innerHTML = printReportStyles() + printReportTemplate(metadata, data, mapCanvas.toDataURL('image/png'));
+    document.body.appendChild(printSheet);
+    document.body.classList.add('is-printing');
+    const image = printSheet.querySelector('.map-image');
     if (image && !image.complete) await new Promise(resolve => { image.onload = resolve; image.onerror = resolve; });
     await new Promise(resolve => setTimeout(resolve, 300));
-    printWindow.focus();
-    printWindow.print();
+    window.onafterprint = () => {
+      window.onafterprint = null;
+      restorePage();
+      setStatus('ปิดหน้าพิมพ์แล้ว หากต้องการไฟล์ให้เลือก “บันทึกเป็น PDF”', 'ok');
+    };
+    window.print();
     setStatus('เปิดหน้าพิมพ์แล้ว กรุณาเลือก “บันทึกเป็น PDF” หากต้องการไฟล์ PDF', 'ok');
   } catch (error) {
     console.error('Print report failed:', error);
-    printWindow.close();
+    restorePage();
     setStatus('ไม่สามารถเตรียมรายงานสำหรับพิมพ์ได้ กรุณาลองใหม่อีกครั้ง', 'warn');
-  } finally {
-    button.disabled = false;
-    button.textContent = oldText;
   }
 }
 
