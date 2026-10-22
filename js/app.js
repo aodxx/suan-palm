@@ -29,11 +29,18 @@ L.control.scale({ metric: true, imperial: false }).addTo(map);
 const drawnItems = new L.FeatureGroup().addTo(map);
 const gridLayer  = new L.FeatureGroup().addTo(map);
 const guideLine  = L.polyline([], { color: '#ffeb3b', weight: 2, dashArray: '4 4' }).addTo(map);
+const PLOT_BOUNDARY_STYLE = {
+  color: '#f4c400',       // เหลืองเข้ม มองเห็นชัดบนภาพดาวเทียม
+  weight: 6,
+  opacity: 1,
+  fillColor: '#f4c400',
+  fillOpacity: 0.16,
+  className: 'plot-boundary'
+};
 
 map.addControl(new L.Control.Draw({
   draw: {
-    polygon: { allowIntersection: false, showArea: false,
-               shapeOptions: { color: '#ffeb3b', weight: 2, fillOpacity: 0.12 } },
+    polygon: { allowIntersection: false, showArea: false, shapeOptions: PLOT_BOUNDARY_STYLE },
     polyline: false, rectangle: false, circle: false, marker: false, circlemarker: false
   },
   edit: { featureGroup: drawnItems }
@@ -155,6 +162,7 @@ function requestUserLocation() {
 }
 
 $('btnLocate').addEventListener('click', requestUserLocation);
+$('plotName').addEventListener('input', updateCount);
 
 $('treePerRai').textContent = TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')';
 $('rowSpacing').textContent = ROW_SPACING.toFixed(3) + ' ม.';
@@ -220,10 +228,11 @@ function updateCount() {
     $('treeDensity').textContent = rai > 0 ? (trees.length / rai).toFixed(2) : '–';
   }
   const has = trees.length > 0;
+  const hasPlotName = Boolean(($('plotName').value || '').trim());
   $('btnGeoJSON').disabled = !has;
   $('btnCSV').disabled = !has;
-  $('btnPDF').disabled = !has;
-  $('btnPrint').disabled = !has;
+  $('btnPDF').disabled = !has || !hasPlotName;
+  $('btnPrint').disabled = !has || !hasPlotName;
   $('btnUndo').disabled = !removed.length;
 }
 

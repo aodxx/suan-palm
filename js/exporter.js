@@ -40,6 +40,18 @@ function exportMetadata() {
   };
 }
 
+function requirePlotName(actionText) {
+  const input = $('plotName');
+  const name = input ? input.value.trim() : '';
+  if (name) return name;
+  if (input) {
+    input.focus();
+    if (input.reportValidity) input.reportValidity();
+  }
+  setStatus('กรุณากรอกชื่อแปลง/เจ้าของแปลงก่อน' + actionText, 'warn');
+  return null;
+}
+
 $('btnGeoJSON').addEventListener('click', () => {
   const metadata = exportMetadata();
   const fc = turf.featureCollection(currentPoints().map(p =>
@@ -261,6 +273,7 @@ async function exportPdf() {
     setStatus('กรุณาวาดพื้นที่และสร้างจุดปลูกก่อนดาวน์โหลด PDF', 'warn');
     return;
   }
+  if (!requirePlotName('ดาวน์โหลด PDF')) return;
   if (!window.jspdf || !window.jspdf.jsPDF || !window.html2canvas) {
     setStatus('ไม่สามารถโหลดไลบรารี PDF ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต', 'warn');
     return;
@@ -407,6 +420,7 @@ async function printReport() {
     setStatus('กรุณาวาดพื้นที่และสร้างจุดปลูกก่อนพิมพ์รายงาน', 'warn');
     return;
   }
+  if (!requirePlotName('พิมพ์รายงาน')) return;
   const button = $('btnPrint');
   const oldText = button.textContent;
   button.disabled = true;
