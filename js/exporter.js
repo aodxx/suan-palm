@@ -19,7 +19,7 @@ function csvCell(value) {
 
 // [เพิ่ม] สร้างข้อมูลส่วนหัวร่วมสำหรับไฟล์ดาวน์โหลดทุกประเภท
 function exportLocation() {
-  if (userLocation) return userLocation;
+  if (plotLocation) return plotLocation;
   if (currentFeature) {
     const center = turf.centroid(currentFeature).geometry.coordinates;
     return { lat: center[1], lng: center[0] };
@@ -32,8 +32,12 @@ function exportMetadata() {
   const seedlingPrice = getSeedlingPrice();
   return {
     plotName: ($('plotName').value || '').trim() || 'ไม่ได้ระบุ',
-    address: userLocation ? formatUserAddress(userAddress) : 'ไม่ทราบตำแหน่ง',
+    address: plotLocation ? formatUserAddress(plotAddress) : (userLocation ? formatUserAddress(userAddress) : 'ไม่ทราบตำแหน่ง'),
     location,
+    plotLocation,
+    plotAddress,
+    userLocation,
+    userAddress,
     postcode: userAddress && userAddress.postcode ? userAddress.postcode : '',
     seedlingPrice,
     seedlingTotal: seedlingPrice !== null ? seedlingPrice * trees.length : null,
@@ -63,6 +67,8 @@ $('btnGeoJSON').addEventListener('click', () => {
     แปลง: metadata.plotName,
     ตำแหน่ง: metadata.address,
     พิกัด: metadata.location ? [metadata.location.lat, metadata.location.lng] : null,
+    พิกัดตำแหน่งแปลง: metadata.plotLocation ? [metadata.plotLocation.lat, metadata.plotLocation.lng] : null,
+    พิกัดมือถือ: metadata.userLocation ? [metadata.userLocation.lat, metadata.userLocation.lng] : null,
     รหัสไปรษณีย์: metadata.postcode,
     ราคาต้นกล้าต่อต้นบาท: metadata.seedlingPrice,
     ค่าต้นกล้ารวมบาท: metadata.seedlingTotal,
@@ -76,7 +82,8 @@ $('btnCSV').addEventListener('click', () => {
   const header = [
     '# แปลง: ' + csvCell(metadata.plotName),
     '# ตำแหน่ง: ' + csvCell(metadata.address),
-    '# พิกัด: ' + csvCell(coordinate),
+    '# พิกัดแปลง: ' + csvCell(coordinate),
+    '# พิกัดมือถือ: ' + csvCell(metadata.userLocation ? metadata.userLocation.lat.toFixed(6) + ', ' + metadata.userLocation.lng.toFixed(6) : 'ไม่ได้อนุญาต'),
     '# รหัสไปรษณีย์: ' + csvCell(metadata.postcode || 'ไม่ระบุ'),
     '# ราคาต้นกล้า/ต้น: ' + csvCell(metadata.seedlingPrice !== null ? formatBaht(metadata.seedlingPrice) : 'ไม่ระบุ'),
     '# ค่าต้นกล้ารวม: ' + csvCell(metadata.seedlingTotal !== null ? formatBaht(metadata.seedlingTotal) : 'ไม่ระบุ'),
@@ -345,7 +352,8 @@ async function exportPdf() {
       ['ระยะห่างระหว่างแถว', ROW_SPACING.toFixed(3) + ' เมตร'],
       ['ราคาต้นกล้า/ต้น', metadata.seedlingPrice !== null ? formatBaht(metadata.seedlingPrice) : 'ไม่ระบุ'],
       ['ค่าต้นกล้ารวม', metadata.seedlingTotal !== null ? formatBaht(metadata.seedlingTotal) : 'ไม่ระบุ'],
-      ['พิกัดที่ใช้ส่งออก', metadata.location ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6) : 'ไม่ทราบ']
+      ['พิกัดแปลงที่ใช้ส่งออก', metadata.location ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6) : 'ไม่ทราบ'],
+      ['พิกัดมือถือ', metadata.userLocation ? metadata.userLocation.lat.toFixed(6) + ', ' + metadata.userLocation.lng.toFixed(6) : 'ไม่ได้อนุญาต']
     ];
     addPdfSummaryTable(pdf, rows, 60);
     drawPdfText(pdf, 'หมายเหตุ: ข้อมูลนี้เป็นผลคำนวณจากจุดปลูกที่สร้างและปรับตำแหน่งล่าสุด', 15, 245, { size: 10, color: [107, 114, 128], maxWidth: 180 });
@@ -385,7 +393,10 @@ function printReportData(metadata) {
     seedlingTotal: metadata.seedlingTotal !== null ? formatBaht(metadata.seedlingTotal) : 'ไม่ระบุ',
     center: metadata.location
       ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6)
-      : 'ไม่ทราบ'
+      : 'ไม่ทราบ',
+    userCenter: metadata.userLocation
+      ? metadata.userLocation.lat.toFixed(6) + ', ' + metadata.userLocation.lng.toFixed(6)
+      : 'ไม่ได้อนุญาต'
   };
 }
 
@@ -401,7 +412,8 @@ function printReportTemplate(metadata, data, mapImage) {
     ['ระยะห่างระหว่างแถว', ROW_SPACING.toFixed(3) + ' เมตร'],
     ['ราคาต้นกล้า/ต้น', data.seedlingPrice],
     ['ค่าต้นกล้ารวม', data.seedlingTotal],
-    ['พิกัดที่ใช้ส่งออก', data.center]
+    ['พิกัดแปลงที่ใช้ส่งออก', data.center],
+    ['พิกัดมือถือ', data.userCenter]
   ];
   return '<main class="print-report">' +
     '<h1>แผนที่วางแผนปลูกปาล์ม</h1>' +

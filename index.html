@@ -37,7 +37,9 @@
         <label for="plotName">ชื่อแปลง/เจ้าของแปลง <span class="required-mark">* จำเป็นก่อนดาวน์โหลด PDF</span></label>
         <input type="text" id="plotName" placeholder="เช่น สวนปาล์มบ้านเรา" maxlength="120" required aria-required="true">
         <button id="btnLocate" class="btn-location" type="button" title="กดเพื่ออนุญาตให้เว็บใช้ตำแหน่งของคุณ">📍 อนุญาตและใช้ตำแหน่งของฉัน</button>
-        <div id="locationStatus" class="location-status">📍 ตำแหน่งของคุณ: ไม่ทราบตำแหน่ง</div>
+        <div id="locationStatus" class="location-status user-location-status">🔵 ตำแหน่งมือถือ: ยังไม่ได้อนุญาต</div>
+        <button id="btnPickPlot" class="btn-plot-location" type="button" title="กดแล้วแตะจุดกึ่งกลางแปลงบนแผนที่">📌 ชี้ตำแหน่งกึ่งกลางแปลง</button>
+        <div id="plotLocationStatus" class="location-status plot-location-status">🟠 ตำแหน่งแปลง: ยังไม่ได้ชี้บนแผนที่</div>
       </div>
     </div>
 
@@ -100,9 +102,10 @@
     <p class="help">
       <b>วิธีใช้งาน:</b><br>
       1. กดปุ่มรูปหลายเหลี่ยม (มุมซ้ายบนของแผนที่) แล้วคลิกวาดขอบเขตที่ดินของคุณ<br>
-      2. กดปุ่ม "🌴 สร้างจุดปลูกปาล์ม" เพื่อให้ระบบคำนวณจุดปลูกอัตโนมัติ<br>
-      3. ลากจุดสีเขียวเพื่อปรับตำแหน่งได้ ระบบจะเตือนเป็น<span style="color:#e53935;font-weight:700">สีแดง</span>หากระยะห่างน้อยกว่า 9 เมตร<br>
-      4. แตะ/คลิกที่จุดแล้วกด "🗑 ลบต้นนี้" (หรือคลิกขวาเพื่อลบทันที) ลบผิดกด "↩ เลิกทำ" ได้
+      2. หากแปลงไม่ใช่จุดที่คุณยืนอยู่ ให้กด "📌 ชี้ตำแหน่งกึ่งกลางแปลง" แล้วแตะจุดกลางแปลงบนแผนที่<br>
+      3. กดปุ่ม "🌴 สร้างจุดปลูกปาล์ม" เพื่อให้ระบบคำนวณจุดปลูกอัตโนมัติ<br>
+      4. ลากจุดสีเขียวเพื่อปรับตำแหน่งได้ ระบบจะเตือนเป็น<span style="color:#e53935;font-weight:700">สีแดง</span>หากระยะห่างน้อยกว่า 9 เมตร<br>
+      5. แตะ/คลิกที่จุดแล้วกด "🗑 ลบต้นนี้" (หรือคลิกขวาเพื่อลบทันที) ลบผิดกด "↩ เลิกทำ" ได้
     </p>
   </div>
 

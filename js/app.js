@@ -104,6 +104,10 @@ function updateSeedlingCost() {
 let userLocation = null;
 let userAddress = null;
 let userLocationMarker = null;
+let plotLocation = null;
+let plotAddress = null;
+let plotLocationMarker = null;
+let pickingPlotLocation = false;
 const geocodeCache = new Map();
 
 function formatUserAddress(address) {
@@ -117,18 +121,20 @@ function formatUserAddress(address) {
 
 function updateLocationLabel() {
   const el = $('locationStatus');
-  if (!el) return;
-  el.textContent = '📍 ตำแหน่งของคุณ: ' + (userLocation ? formatUserAddress(userAddress) : 'ไม่ทราบตำแหน่ง');
+  if (el) el.textContent = '🔵 ตำแหน่งมือถือ: ' + (userLocation ? formatUserAddress(userAddress) : 'ยังไม่ได้อนุญาต');
+  const plotEl = $('plotLocationStatus');
+  if (plotEl) plotEl.textContent = '🟠 ตำแหน่งแปลง: ' + (plotLocation ? formatUserAddress(plotAddress) : 'ยังไม่ได้ชี้บนแผนที่');
 }
 
-async function reverseGeocode(lat, lng) {
+async function reverseGeocode(lat, lng, target = 'user') {
   // Nominatim ต้องการการระบุแอป; เบราว์เซอร์บางตัวอาจละเว้น User-Agent header แบบกำหนดเอง
   setStatus('กำลังค้นหาชื่อตำบล อำเภอ และจังหวัดจากพิกัด...');
   const cacheKey = lat.toFixed(5) + ',' + lng.toFixed(5);
   if (geocodeCache.has(cacheKey)) {
-    userAddress = geocodeCache.get(cacheKey);
+    if (target === 'plot') plotAddress = geocodeCache.get(cacheKey);
+    else userAddress = geocodeCache.get(cacheKey);
     updateLocationLabel();
-    setStatus('ได้รับตำแหน่งและข้อมูลพื้นที่แล้ว กรุณาวาดขอบเขตแปลงของคุณ', 'ok');
+    setStatus(target === 'plot' ? 'บันทึกตำแหน่งแปลงแล้ว' : 'ได้รับตำแหน่งมือถือและข้อมูลพื้นที่แล้ว', 'ok');
     return;
   }
   const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&layer=address&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lng) + '&accept-language=th';
@@ -143,19 +149,22 @@ async function reverseGeocode(lat, lng) {
     const data = await response.json();
     const a = data.address || {};
     const isBangkok = a.city === 'กรุงเทพมหานคร' || a.province === 'กรุงเทพมหานคร';
-    userAddress = {
+    const address = {
       // กรุงเทพฯ มักใช้ quarter=แขวง และ suburb=เขต; จังหวัดอื่นมักใช้ suburb/village/city_district
       subdistrict: a.quarter || a.village || a.suburb || a.city_district || '',
       district: a.county || a.district || (isBangkok ? a.suburb : '') || '',
       province: a.state || a.province || (isBangkok ? a.city : '') || '',
       postcode: a.postcode || ''
     };
-    geocodeCache.set(cacheKey, userAddress);
-    setStatus('ได้รับตำแหน่งและข้อมูลพื้นที่แล้ว กรุณาวาดขอบเขตแปลงของคุณ', 'ok');
+    geocodeCache.set(cacheKey, address);
+    if (target === 'plot') plotAddress = address;
+    else userAddress = address;
+    setStatus(target === 'plot' ? 'บันทึกตำแหน่งแปลงและชื่อพื้นที่แล้ว' : 'ได้รับตำแหน่งมือถือและข้อมูลพื้นที่แล้ว', 'ok');
   } catch (error) {
     console.warn('Reverse geocoding failed:', error);
-    userAddress = null;
-    setStatus('ได้พิกัดแล้ว แต่ค้นหาชื่อตำบล/อำเภอ/จังหวัดไม่สำเร็จ สามารถใช้งานต่อได้', 'warn');
+    if (target === 'plot') plotAddress = null;
+    else userAddress = null;
+    setStatus((target === 'plot' ? 'บันทึกพิกัดแปลงแล้ว แต่ค้นหาชื่อพื้นที่ไม่สำเร็จ' : 'ได้พิกัดมือถือแล้ว แต่ค้นหาชื่อพื้นที่ไม่สำเร็จ') + ' สามารถใช้งานต่อได้', 'warn');
   }
   updateLocationLabel();
 }
@@ -210,7 +219,30 @@ function requestUserLocation() {
   }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
 }
 
+function beginPickPlotLocation() {
+  pickingPlotLocation = true;
+  $('map').classList.add('is-picking-plot');
+  $('btnPickPlot').textContent = 'แตะแผนที่เพื่อวางหมุดแปลง...';
+  setStatus('กรุณาแตะจุดกึ่งกลางแปลงบนแผนที่ แล้วระบบจะวางหมุดสีส้มให้', 'ok');
+}
+
+function savePlotLocation(latlng) {
+  plotLocation = { lat: latlng.lat, lng: latlng.lng };
+  if (plotLocationMarker) map.removeLayer(plotLocationMarker);
+  plotLocationMarker = L.marker([latlng.lat, latlng.lng], {
+    icon: L.divIcon({ className: 'plot-center-marker', html: '📌', iconSize: [30, 30], iconAnchor: [15, 30] })
+  }).bindTooltip('กึ่งกลางแปลง', { direction: 'top', offset: [0, -24] }).addTo(map);
+  pickingPlotLocation = false;
+  $('map').classList.remove('is-picking-plot');
+  $('btnPickPlot').textContent = '📌 ชี้ตำแหน่งกึ่งกลางแปลงอีกครั้ง';
+  plotAddress = null;
+  updateLocationLabel();
+  reverseGeocode(plotLocation.lat, plotLocation.lng, 'plot');
+  setStatus('บันทึกตำแหน่งกึ่งกลางแปลงแล้ว', 'ok');
+}
+
 $('btnLocate').addEventListener('click', requestUserLocation);
+$('btnPickPlot').addEventListener('click', beginPickPlotLocation);
 $('plotName').addEventListener('input', updateCount);
 $('seedlingPrice').addEventListener('input', updateSeedlingCost);
 
@@ -509,6 +541,9 @@ function recheckAll() {
 
 
 // ---------- เหตุการณ์ ----------
+map.on('click', e => {
+  if (pickingPlotLocation) savePlotLocation(e.latlng);
+});
 map.on(L.Draw.Event.CREATED, e => {
   drawnItems.clearLayers();          // จำกัดให้มี 1 Polygon
   clearGrid();
@@ -533,7 +568,18 @@ $('btnGenerate').addEventListener('click', () => {
 // [แก้ไข 2] เพิ่ม confirm ก่อนล้างทั้งหมด (ถ้ากดยกเลิกให้ยกเลิกการล้าง)
 $('btnClear').addEventListener('click', () => {
   if ((drawnItems.getLayers().length || trees.length) && !confirm('⚠️ คุณแน่ใจหรือไม่ที่จะล้างพื้นที่และจุดปลูกทั้งหมด? ข้อมูลจะหายไปและกู้คืนไม่ได้')) return;
-  drawnItems.clearLayers(); clearGrid(); updateArea();
+  drawnItems.clearLayers(); clearGrid();
+  plotLocation = null;
+  plotAddress = null;
+  pickingPlotLocation = false;
+  $('map').classList.remove('is-picking-plot');
+  if (plotLocationMarker) {
+    map.removeLayer(plotLocationMarker);
+    plotLocationMarker = null;
+  }
+  $('btnPickPlot').textContent = '📌 ชี้ตำแหน่งกึ่งกลางแปลง';
+  updateLocationLabel();
+  updateArea();
   setStatus('ล้างข้อมูลแล้ว');
 });
 $('btnCenter').addEventListener('click', () => {
