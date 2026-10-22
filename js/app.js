@@ -471,8 +471,9 @@ function generateGrid() {
 
   rebuildHash();
   updateCount();
-  // [แก้ไข 5] เปลี่ยนข้อความเมื่อสร้างจุดปลูกสำเร็จ (แก้เฉพาะข้อความ ไม่แตะตรรกะคำนวณ)
-  setStatus('✅ สร้างจุดปลูกสำเร็จทั้งหมด ' + trees.length.toLocaleString('th-TH') + ' ต้น (ระยะห่าง 9 เมตร)', 'ok');
+  const price = getSeedlingPrice();
+  const costText = price !== null ? ' ค่าต้นกล้าประมาณ ' + formatBaht(price * trees.length) : '';
+  setStatus('✅ สร้างจุดปลูกสำเร็จทั้งหมด ' + trees.length.toLocaleString('th-TH') + ' ต้น (ระยะห่าง 9 เมตร).' + costText, 'ok');
 }
 
 function removeTree(t) {
