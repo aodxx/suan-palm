@@ -1,0 +1,26 @@
+{
+  "name": "สวนปาล์ม — Palm Planting Planner",
+  "short_name": "สวนปาล์ม",
+  "description": "เครื่องมือวางแผนการปลูกปาล์มและส่งออกข้อมูลแปลง",
+  "lang": "th",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a6842",
+  "icons": [
+    {
+      "src": "assets/icons/png-square/palm-gps-icon-square-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/png-square/palm-gps-icon-square-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

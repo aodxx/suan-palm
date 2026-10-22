@@ -29,12 +29,16 @@ suan-palm/
 ├── index.html
 ├── css/
 │   └── style.css
+├── assets/
+│   └── icons/              # ไอคอน favicon, Android และ iOS หลายขนาด
 ├── js/
 │   ├── calculator.js
 │   ├── app.js
 │   └── exporter.js
 └── README.md
 ```
+
+หน้าเว็บเชื่อมโยง favicon, ไอคอน Apple Touch และ `site.webmanifest` แล้ว ผู้ใช้สามารถเลือก **เพิ่มไปยังหน้าจอหลัก** บน Android หรือ iOS ได้ โดยใช้ไอคอนชุดเดียวกันในขนาดที่เหมาะสม
 
 ## เครดิตไลบรารี
 
