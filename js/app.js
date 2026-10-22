@@ -2,7 +2,9 @@
  *  ส่วนที่ 2: แผนที่ + วาด Polygon + สร้างกริด
  * ===================================================================== */
 
-const CENTER = [7.629347, 100.006592];   // 7°37'45.65"N 100°00'23.73"E
+// [แก้ไขความเป็นส่วนตัว] ไม่ฝังพิกัดส่วนตัวไว้ในโค้ด ใช้ตำแหน่งผู้ใช้เมื่อได้รับอนุญาต
+const DEFAULT_CENTER = [13.7563, 100.5018]; // กรุงเทพฯ
+const DEFAULT_ZOOM = 6;
 const MAX_POINTS = 20000;                // กันเบราว์เซอร์ค้าง
 const TOL = 0.05;                        // เผื่อความคลาดเคลื่อนเชิงตัวเลข (เมตร)
 
@@ -16,16 +18,12 @@ const esriLabels = L.tileLayer(
 const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' });
 
-const map = L.map('map', { layers: [esriImagery] }).setView(CENTER, 18);
+const map = L.map('map', { layers: [esriImagery] }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 L.control.layers(
   { 'ดาวเทียม (Esri World Imagery)': esriImagery, 'แผนที่ถนน (OSM)': osm },
   { 'ชื่อสถานที่': esriLabels }
 ).addTo(map);
 L.control.scale({ metric: true, imperial: false }).addTo(map);
-
-// หมุดศูนย์กลางพื้นที่ของผู้ใช้
-L.circleMarker(CENTER, { radius: 6, color: '#fff', weight: 2, fillColor: '#1976d2', fillOpacity: 1 })
-  .bindTooltip('ศูนย์กลางพื้นที่<br>7.629347, 100.006592').addTo(map);
 
 // ---------- Leaflet.draw ----------
 const drawnItems = new L.FeatureGroup().addTo(map);
@@ -45,6 +43,78 @@ map.addControl(new L.Control.Draw({
 const $ = id => document.getElementById(id);
 const statusEl = $('status');
 function setStatus(text, cls) { statusEl.textContent = text; statusEl.className = cls || ''; }
+
+// [เพิ่ม] ตำแหน่งและที่อยู่ของผู้ใช้ เก็บไว้ในหน่วยความจำเท่านั้น ไม่ส่งไปเซิร์ฟเวอร์ของโปรเจกต์
+let userLocation = null;
+let userAddress = null;
+let locationRequested = false;
+let userLocationMarker = null;
+
+function formatUserAddress(address) {
+  if (!address) return 'ไม่ทราบตำแหน่ง';
+  const subdistrict = address.subdistrict ? 'ตำบล/แขวง' + address.subdistrict : '';
+  const district = address.district ? 'อำเภอ/เขต' + address.district : '';
+  const province = address.province ? 'จังหวัด' + address.province : '';
+  return [subdistrict, district, province].filter(Boolean).join(' ') || 'ไม่ทราบตำแหน่ง';
+}
+
+function updateLocationLabel() {
+  const el = $('locationStatus');
+  if (!el) return;
+  el.textContent = '📍 ตำแหน่งของคุณ: ' + (userLocation ? formatUserAddress(userAddress) : 'ไม่ทราบตำแหน่ง');
+}
+
+async function reverseGeocode(lat, lng) {
+  // Nominatim ต้องการการระบุแอป; เบราว์เซอร์บางตัวอาจละเว้น User-Agent header แบบกำหนดเอง
+  const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lng) + '&accept-language=th';
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Accept-Language': 'th',
+        'User-Agent': 'SuanPalmApp/1.0'
+      }
+    });
+    if (!response.ok) throw new Error('Reverse geocoding HTTP ' + response.status);
+    const data = await response.json();
+    const a = data.address || {};
+    userAddress = {
+      subdistrict: a.village || a.suburb || a.hamlet || a.town || '',
+      district: a.city_district || a.county || '',
+      province: a.state || '',
+      postcode: a.postcode || ''
+    };
+  } catch (error) {
+    console.warn('Reverse geocoding failed:', error);
+    userAddress = null;
+  }
+  updateLocationLabel();
+}
+
+function requestUserLocation() {
+  if (locationRequested || !navigator.geolocation) {
+    updateLocationLabel();
+    return;
+  }
+  locationRequested = true;
+  setStatus('กำลังขออนุญาตใช้ตำแหน่ง เพื่อแสดงแผนที่บริเวณที่คุณอยู่...');
+  navigator.geolocation.getCurrentPosition(position => {
+    userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+    map.setView([userLocation.lat, userLocation.lng], 16);
+    userLocationMarker = L.circleMarker([userLocation.lat, userLocation.lng], {
+      radius: 6, color: '#fff', weight: 2, fillColor: '#1976d2', fillOpacity: 1
+    }).bindTooltip('ตำแหน่งของฉัน').addTo(map);
+    updateLocationLabel();
+    reverseGeocode(userLocation.lat, userLocation.lng);
+    setStatus('ได้รับตำแหน่งแล้ว กรุณาวาดขอบเขตแปลงของคุณ');
+  }, () => {
+    userLocation = null;
+    userAddress = null;
+    updateLocationLabel();
+    setStatus('ไม่ได้รับอนุญาตตำแหน่ง ระบบจะใช้แผนที่ประเทศไทยเป็นค่าเริ่มต้น');
+  }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+}
+
+requestUserLocation();
 
 $('treePerRai').textContent = TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')';
 $('rowSpacing').textContent = ROW_SPACING.toFixed(3) + ' ม.';
@@ -363,7 +433,10 @@ $('btnClear').addEventListener('click', () => {
   drawnItems.clearLayers(); clearGrid(); updateArea();
   setStatus('ล้างข้อมูลแล้ว');
 });
-$('btnCenter').addEventListener('click', () => map.setView(CENTER, 18));
+$('btnCenter').addEventListener('click', () => {
+  if (userLocation) map.setView([userLocation.lat, userLocation.lng], 16);
+  else map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+});
 
 // ---------- เลิกทำการลบ / ลบด้วยการแตะ / เหตุการณ์ของจุดปลูก (ใช้ event ของกลุ่มแทนผูกทีละจุด) ----------
 $('btnUndo').addEventListener('click', undoRemove);

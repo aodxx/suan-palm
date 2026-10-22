@@ -12,15 +12,56 @@ function currentPoints() {
     return { id: i + 1, lat: ll.lat, lng: ll.lng };
   });
 }
+
+// [เพิ่ม] สร้างข้อมูลส่วนหัวร่วมสำหรับไฟล์ดาวน์โหลดทุกประเภท
+function exportLocation() {
+  if (userLocation) return userLocation;
+  if (currentFeature) {
+    const center = turf.centroid(currentFeature).geometry.coordinates;
+    return { lat: center[1], lng: center[0] };
+  }
+  return null;
+}
+
+function exportMetadata() {
+  const location = exportLocation();
+  return {
+    plotName: ($('plotName').value || '').trim() || 'ไม่ได้ระบุ',
+    address: userLocation ? formatUserAddress(userAddress) : 'ไม่ทราบตำแหน่ง',
+    location,
+    postcode: userAddress && userAddress.postcode ? userAddress.postcode : '',
+    createdAt: new Date().toLocaleDateString('th-TH', {
+      day: 'numeric', month: 'long', year: 'numeric'
+    })
+  };
+}
+
 $('btnGeoJSON').addEventListener('click', () => {
+  const metadata = exportMetadata();
   const fc = turf.featureCollection(currentPoints().map(p =>
     turf.point([p.lng, p.lat], { id: p.id })));
+  fc.properties = {
+    แปลง: metadata.plotName,
+    ตำแหน่ง: metadata.address,
+    พิกัด: metadata.location ? [metadata.location.lat, metadata.location.lng] : null,
+    รหัสไปรษณีย์: metadata.postcode,
+    วันที่สร้าง: metadata.createdAt
+  };
   download('palm-plan.geojson', 'application/geo+json', JSON.stringify(fc, null, 2));
 });
 $('btnCSV').addEventListener('click', () => {
+  const metadata = exportMetadata();
+  const coordinate = metadata.location ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6) : 'ไม่ทราบ';
+  const header = [
+    '# แปลง: ' + metadata.plotName,
+    '# ตำแหน่ง: ' + metadata.address,
+    '# พิกัด: ' + coordinate,
+    '# รหัสไปรษณีย์: ' + (metadata.postcode || 'ไม่ระบุ'),
+    '# วันที่สร้าง: ' + metadata.createdAt
+  ];
   const rows = ['id,lat,lng'].concat(currentPoints().map(p =>
     p.id + ',' + p.lat.toFixed(8) + ',' + p.lng.toFixed(8)));
-  download('palm-plan.csv', 'text/csv;charset=utf-8', '﻿' + rows.join('\n'));
+  download('palm-plan.csv', 'text/csv;charset=utf-8', '﻿' + header.concat(rows).join('\n'));
 });
 
 // ---------- ส่งออก PDF (เพิ่มในขั้นตอน Export PDF) ----------
@@ -75,11 +116,13 @@ function pdfText(text, style) {
   return el;
 }
 
-function createMapReportPage(mapCanvas, plotName, createdAt) {
+function createMapReportPage(mapCanvas, metadata) {
   const content = document.createElement('div');
   content.appendChild(pdfText('แผนที่วางแผนปลูกปาล์ม', 'font-size:30px;font-weight:700;color:#1b5e20;margin-bottom:12px'));
-  content.appendChild(pdfText('ชื่อแปลง/เจ้าของแปลง: ' + plotName, 'font-size:20px;margin-bottom:6px'));
-  content.appendChild(pdfText('วันที่สร้าง: ' + createdAt, 'font-size:16px;color:#4b5563;margin-bottom:20px'));
+  content.appendChild(pdfText('แปลง: ' + metadata.plotName, 'font-size:20px;margin-bottom:6px'));
+  content.appendChild(pdfText('ตำแหน่ง: ' + metadata.address, 'font-size:16px;color:#4b5563;margin-bottom:4px'));
+  content.appendChild(pdfText('พิกัด: ' + (metadata.location ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6) : 'ไม่ทราบ'), 'font-size:16px;color:#4b5563;margin-bottom:4px'));
+  content.appendChild(pdfText('วันที่สร้าง: ' + metadata.createdAt, 'font-size:16px;color:#4b5563;margin-bottom:20px'));
 
   const image = document.createElement('img');
   image.src = mapCanvas.toDataURL('image/png');
@@ -89,14 +132,14 @@ function createMapReportPage(mapCanvas, plotName, createdAt) {
   return createPdfPage(content);
 }
 
-function createSummaryReportPage(plotName, createdAt) {
+function createSummaryReportPage(metadata) {
   const content = document.createElement('div');
   content.appendChild(pdfText('สรุปข้อมูลการวางแผนปลูกปาล์ม', 'font-size:30px;font-weight:700;color:#1b5e20;margin-bottom:12px'));
-  content.appendChild(pdfText('ชื่อแปลง/เจ้าของแปลง: ' + plotName, 'font-size:20px;margin-bottom:6px'));
-  content.appendChild(pdfText('วันที่สร้าง: ' + createdAt, 'font-size:16px;color:#4b5563;margin-bottom:24px'));
+  content.appendChild(pdfText('แปลง: ' + metadata.plotName, 'font-size:20px;margin-bottom:6px'));
+  content.appendChild(pdfText('ตำแหน่ง: ' + metadata.address, 'font-size:16px;color:#4b5563;margin-bottom:4px'));
+  content.appendChild(pdfText('วันที่สร้าง: ' + metadata.createdAt, 'font-size:16px;color:#4b5563;margin-bottom:24px'));
 
   const area = m2ToThaiArea(currentAreaM2);
-  const center = currentFeature ? turf.centroid(currentFeature).geometry.coordinates : [0, 0];
   const rows = [
     ['พื้นที่ (ตารางเมตร)', currentAreaM2.toLocaleString('th-TH', { maximumFractionDigits: 1 })],
     ['พื้นที่ (ไร่)', String(area.rai)],
@@ -106,7 +149,7 @@ function createSummaryReportPage(plotName, createdAt) {
     ['จำนวนต้นต่อไร่ (จริง)', (currentAreaM2 > 0 ? (trees.length / (currentAreaM2 / RAI_M2)).toFixed(2) : '–')],
     ['จำนวนต้นต่อไร่ (ทฤษฎี)', TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')'],
     ['ระยะห่างระหว่างแถว', ROW_SPACING.toFixed(3) + ' เมตร'],
-    ['พิกัดศูนย์กลาง', center[1].toFixed(6) + ', ' + center[0].toFixed(6)]
+    ['พิกัดที่ใช้ส่งออก', metadata.location ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6) : 'ไม่ทราบ']
   ];
 
   const table = document.createElement('table');
@@ -161,12 +204,9 @@ async function exportPdf() {
       }
     });
 
-    const plotName = ($('plotName').value || '').trim() || 'ไม่มีชื่อแปลง';
-    const createdAt = new Date().toLocaleString('th-TH', {
-      dateStyle: 'long', timeStyle: 'short'
-    });
-    const mapReport = await renderPdfElement(createMapReportPage(mapCanvas, plotName, createdAt));
-    const summaryReport = await renderPdfElement(createSummaryReportPage(plotName, createdAt));
+    const metadata = exportMetadata();
+    const mapReport = await renderPdfElement(createMapReportPage(mapCanvas, metadata));
+    const summaryReport = await renderPdfElement(createSummaryReportPage(metadata));
 
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -176,7 +216,7 @@ async function exportPdf() {
     pdf.addPage();
     pdf.addImage(summaryReport.toDataURL('image/png'), 'PNG', 0, 0, pageWidth, pageHeight);
     const datePart = new Date().toISOString().slice(0, 10);
-    pdf.save('palm-plan-' + safePdfName(plotName) + '-' + datePart + '.pdf');
+    pdf.save('palm-plan-' + safePdfName(metadata.plotName) + '-' + datePart + '.pdf');
     setStatus('✅ ดาวน์โหลดไฟล์เรียบร้อยแล้ว กรุณาตรวจสอบในโฟลเดอร์ Downloads', 'ok');
   } catch (error) {
     console.error('PDF export failed:', error);
