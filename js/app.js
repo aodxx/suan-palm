@@ -51,6 +51,28 @@ const $ = id => document.getElementById(id);
 const statusEl = $('status');
 function setStatus(text, cls) { statusEl.textContent = text; statusEl.className = cls || ''; }
 
+function getSeedlingPrice() {
+  const input = $('seedlingPrice');
+  const value = input ? parseFloat(input.value) : NaN;
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function formatBaht(value) {
+  return Number(value).toLocaleString('th-TH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }) + ' บาท';
+}
+
+function updateSeedlingCost() {
+  const totalEl = $('seedlingTotal');
+  if (!totalEl) return;
+  const price = getSeedlingPrice();
+  totalEl.textContent = price !== null && trees.length
+    ? formatBaht(price * trees.length)
+    : '–';
+}
+
 // [เพิ่ม] ตำแหน่งและที่อยู่ของผู้ใช้ เก็บไว้ในหน่วยความจำเท่านั้น ไม่ส่งไปเซิร์ฟเวอร์ของโปรเจกต์
 let userLocation = null;
 let userAddress = null;
@@ -163,6 +185,7 @@ function requestUserLocation() {
 
 $('btnLocate').addEventListener('click', requestUserLocation);
 $('plotName').addEventListener('input', updateCount);
+$('seedlingPrice').addEventListener('input', updateSeedlingCost);
 
 $('treePerRai').textContent = TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')';
 $('rowSpacing').textContent = ROW_SPACING.toFixed(3) + ' ม.';
@@ -234,6 +257,7 @@ function updateCount() {
   $('btnPDF').disabled = !has || !hasPlotName;
   $('btnPrint').disabled = !has || !hasPlotName;
   $('btnUndo').disabled = !removed.length;
+  updateSeedlingCost();
 }
 
 function updateArea() {

@@ -29,11 +29,14 @@ function exportLocation() {
 
 function exportMetadata() {
   const location = exportLocation();
+  const seedlingPrice = getSeedlingPrice();
   return {
     plotName: ($('plotName').value || '').trim() || 'ไม่ได้ระบุ',
     address: userLocation ? formatUserAddress(userAddress) : 'ไม่ทราบตำแหน่ง',
     location,
     postcode: userAddress && userAddress.postcode ? userAddress.postcode : '',
+    seedlingPrice,
+    seedlingTotal: seedlingPrice !== null ? seedlingPrice * trees.length : null,
     createdAt: new Date().toLocaleDateString('th-TH', {
       day: 'numeric', month: 'long', year: 'numeric'
     })
@@ -61,6 +64,8 @@ $('btnGeoJSON').addEventListener('click', () => {
     ตำแหน่ง: metadata.address,
     พิกัด: metadata.location ? [metadata.location.lat, metadata.location.lng] : null,
     รหัสไปรษณีย์: metadata.postcode,
+    ราคาต้นกล้าต่อต้นบาท: metadata.seedlingPrice,
+    ค่าต้นกล้ารวมบาท: metadata.seedlingTotal,
     วันที่สร้าง: metadata.createdAt
   };
   download('palm-plan.geojson', 'application/geo+json', JSON.stringify(fc, null, 2));
@@ -73,6 +78,8 @@ $('btnCSV').addEventListener('click', () => {
     '# ตำแหน่ง: ' + csvCell(metadata.address),
     '# พิกัด: ' + csvCell(coordinate),
     '# รหัสไปรษณีย์: ' + csvCell(metadata.postcode || 'ไม่ระบุ'),
+    '# ราคาต้นกล้า/ต้น: ' + csvCell(metadata.seedlingPrice !== null ? formatBaht(metadata.seedlingPrice) : 'ไม่ระบุ'),
+    '# ค่าต้นกล้ารวม: ' + csvCell(metadata.seedlingTotal !== null ? formatBaht(metadata.seedlingTotal) : 'ไม่ระบุ'),
     '# วันที่สร้าง: ' + csvCell(metadata.createdAt)
   ];
   const rows = ['id,lat,lng'].concat(currentPoints().map(p =>
@@ -336,6 +343,8 @@ async function exportPdf() {
       ['จำนวนต้นต่อไร่ (จริง)', (currentAreaM2 > 0 ? (trees.length / (currentAreaM2 / RAI_M2)).toFixed(2) : '–')],
       ['จำนวนต้นต่อไร่ (ทฤษฎี)', TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')'],
       ['ระยะห่างระหว่างแถว', ROW_SPACING.toFixed(3) + ' เมตร'],
+      ['ราคาต้นกล้า/ต้น', metadata.seedlingPrice !== null ? formatBaht(metadata.seedlingPrice) : 'ไม่ระบุ'],
+      ['ค่าต้นกล้ารวม', metadata.seedlingTotal !== null ? formatBaht(metadata.seedlingTotal) : 'ไม่ระบุ'],
       ['พิกัดที่ใช้ส่งออก', metadata.location ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6) : 'ไม่ทราบ']
     ];
     addPdfSummaryTable(pdf, rows, 60);
@@ -372,6 +381,8 @@ function printReportData(metadata) {
     area,
     treeCount: trees.length.toLocaleString('th-TH'),
     density: rai > 0 ? (trees.length / rai).toFixed(2) : '–',
+    seedlingPrice: metadata.seedlingPrice !== null ? formatBaht(metadata.seedlingPrice) : 'ไม่ระบุ',
+    seedlingTotal: metadata.seedlingTotal !== null ? formatBaht(metadata.seedlingTotal) : 'ไม่ระบุ',
     center: metadata.location
       ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6)
       : 'ไม่ทราบ'
@@ -388,6 +399,8 @@ function printReportTemplate(metadata, data, mapImage) {
     ['จำนวนต้นต่อไร่ (จริง)', data.density],
     ['จำนวนต้นต่อไร่ (ทฤษฎี)', TREES_PER_RAI.toFixed(2) + ' (ปลูกได้ ' + Math.floor(TREES_PER_RAI) + ')'],
     ['ระยะห่างระหว่างแถว', ROW_SPACING.toFixed(3) + ' เมตร'],
+    ['ราคาต้นกล้า/ต้น', data.seedlingPrice],
+    ['ค่าต้นกล้ารวม', data.seedlingTotal],
     ['พิกัดที่ใช้ส่งออก', data.center]
   ];
   return '<main class="print-report">' +

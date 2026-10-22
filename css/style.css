@@ -16,6 +16,7 @@
   .row { display: flex; justify-content: space-between; font-size: 14px; padding: 2px 0; gap: 8px; }
   .row b { font-variant-numeric: tabular-nums; text-align: right; }
   .big { font-size: 22px; font-weight: 700; color: #1b5e20; }
+  .cost-total { color: #b45309; font-size: 16px; }
   button {
     width: 100%; padding: 10px; margin-bottom: 8px; border: 0; border-radius: 8px;
     font-size: 15px; cursor: pointer; font-family: inherit;
