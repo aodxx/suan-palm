@@ -62,6 +62,38 @@ test('responsive and accessibility affordances are present', () => {
   assert.match(css, /prefers-reduced-motion/);
 });
 
+test('mobile map-first dock has named controls and follows the existing workflow states', () => {
+  for (const id of ['mobilePrimaryAction', 'mobileActionHint', 'mobileToolsToggle']) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(html, /aria-controls="sidebarContent"/);
+  assert.match(css, /#sidebar:not\(\.is-collapsed\) ~ \.mobile-action-dock\s*\{\s*display:\s*none/);
+  assert.match(css, /\.leaflet-bottom\s*\{\s*bottom:\s*calc\(92px \+ env\(safe-area-inset-bottom\)\)/);
+  const app = read('js/app.js');
+  assert.match(app, /mobileAction\.dataset\.action = 'draw'/);
+  assert.match(app, /mobileAction\.dataset\.action = 'generate'/);
+  assert.match(app, /mobileAction\.dataset\.action = 'review'/);
+  assert.match(app, /\$\('btnGenerate'\)\.click\(\)/);
+  assert.match(app, /restoreDraft\(\);\s*updateWorkflow\(\);/);
+});
+
+test('mobile default collapses the sheet without changing the draft storage schema', () => {
+  const app = read('js/app.js');
+  assert.match(app, /savedSheetState === '1' \|\| savedSheetState === null/);
+  assert.match(app, /const STORAGE_KEY = 'suan-palm-draft-v1'/);
+  assert.match(app, /version: 1/);
+  assert.match(app, /const SHEET_KEY = 'suan-palm-sheet-collapsed'/);
+});
+
+test('replacing, editing, or removing a boundary warns before existing planting points are discarded', () => {
+  const app = read('js/app.js');
+  assert.match(app, /trees\.length && !confirm\('การวาดขอบเขตใหม่จะแทนแปลงเดิม/);
+  assert.match(app, /\.leaflet-draw-edit-edit, \.leaflet-draw-edit-remove/);
+  assert.match(app, /การแก้ไขขอบเขตและกดบันทึกจะล้างจุดปลูกเดิม/);
+  assert.match(app, /การลบขอบเขตจะล้างจุดปลูกทั้งหมด/);
+  assert.match(app, /event\.stopImmediatePropagation\(\)/);
+});
+
 test('equilateral planting calculations retain baseline values and supported spacings', () => {
   const context = { window: {} };
   vm.runInNewContext(read('js/calculator.js'), context);
