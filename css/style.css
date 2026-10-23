@@ -82,13 +82,14 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
 .leaflet-draw-actions a { min-width: 42px; width: 42px; height: 38px; padding: 8px 10px; font-size: 0; line-height: 22px; text-align: center; }
 .leaflet-draw-actions a::first-letter { font-size: 24px; }
 .leaflet-draw-actions a:hover { background: #fff8cc; color: #7a5600; }
+.mobile-action-dock { display: none; }
 
 @media (max-width: 800px) and (min-width: 721px) {
   #sidebar { width: 360px; min-width: 330px; }
   #sidebarContent { padding-inline: 10px; }
   .category-tab { font-size: 9px; }
 }
-@media (max-width: 720px) {
+@media (max-width: 720px), (orientation: landscape) and (max-width: 900px) {
   #app { position: relative; display: block; height: 100%; }
   #map { position: absolute; inset: 0; width: 100%; height: 100%; }
   #sidebar { position: fixed; left: 0; right: 0; bottom: 0; width: 100%; min-width: 0; max-width: none; height: min(76dvh, 690px); max-height: calc(100% - max(72px, env(safe-area-inset-top))); padding: 0; border: 1px solid #cdd8cf; border-bottom: 0; border-radius: 18px 18px 0 0; box-shadow: 0 -4px 18px #0002; overflow: hidden; z-index: 1100; transition: height .24s ease; padding-bottom: env(safe-area-inset-bottom); }
@@ -115,6 +116,18 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
   .storage-status { font-size: 10px; }
   .leaflet-control-layers { margin-top: 10px !important; }
   .leaflet-control-zoom, .leaflet-control-scale { z-index: 1001; }
+  .mobile-action-dock { position: fixed; z-index: 1200; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 3px 8px; min-height: 86px; padding: 7px 12px calc(7px + env(safe-area-inset-bottom)); border-top: 1px solid #d6e1d7; background: #fffffff2; box-shadow: 0 -3px 14px #0002; backdrop-filter: blur(8px); }
+  .mobile-action-dock p { grid-column: 1; min-width: 0; overflow: hidden; margin: 0; color: #52645a; font-size: 11px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-action-dock button { min-height: 46px; margin: 0; font-weight: 700; }
+  #mobilePrimaryAction { grid-column: 1; grid-row: 2; width: 100%; background: var(--green-strong); color: #fff; }
+  #mobilePrimaryAction img { width: 24px; height: 24px; }
+  #mobileToolsToggle { grid-column: 2; grid-row: 1 / span 2; min-width: 76px; padding-inline: 9px; flex-direction: column; gap: 1px; background: #edf6ed; color: #14532d; font-size: 11px; }
+  #mobileToolsToggle img { width: 23px; height: 23px; }
+  #sidebar:not(.is-collapsed) ~ .mobile-action-dock { display: none; }
+  #sidebar.is-collapsed { pointer-events: none; }
+  #sidebar.is-collapsed .sheet-toggle { visibility: hidden; }
+  .mobile-action-dock, .mobile-action-dock * { pointer-events: auto; }
+  .leaflet-bottom { bottom: calc(92px + env(safe-area-inset-bottom)); }
 }
 @media (max-width: 380px) {
   #sidebarContent { padding-inline: 8px; }
@@ -131,6 +144,10 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
   .next-step-hint { margin-top: 3px; }
   .category-tab { min-height: 48px; }
   .category-tab img { width: 22px; height: 22px; }
+  .mobile-action-dock { min-height: 72px; padding-block: 4px; }
+  .mobile-action-dock p { font-size: 10px; }
+  #mobilePrimaryAction, #mobileToolsToggle { min-height: 40px; }
+  .leaflet-bottom { bottom: calc(78px + env(safe-area-inset-bottom)); }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 @media print {

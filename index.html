@@ -126,6 +126,15 @@
     </div>
   </aside>
   <div id="map" role="application" aria-label="แผนที่สำหรับวาดขอบเขตและจัดการจุดปลูก"></div>
+  <div class="mobile-action-dock" aria-label="คำสั่งงานหลักบนมือถือ">
+    <p id="mobileActionHint" aria-live="polite">เริ่มจากวาดขอบเขตแปลง</p>
+    <button id="mobilePrimaryAction" type="button">
+      <img src="assets/icons/ui-3d/draw.svg" alt="" aria-hidden="true"><span>วาดขอบเขตแปลง</span>
+    </button>
+    <button id="mobileToolsToggle" type="button" aria-controls="sidebarContent" aria-expanded="false">
+      <img src="assets/icons/ui-3d/more.svg" alt="" aria-hidden="true"><span>เครื่องมือ</span>
+    </button>
+  </div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>

@@ -127,6 +127,28 @@ function updateWorkflow() {
     generate.disabled = !hasBoundary;
     generate.title = hasBoundary ? (hasTrees ? 'สร้างใหม่จะแทนที่จุดที่ปรับตำแหน่งไว้' : 'สร้างจุดปลูกจากขอบเขตและค่าตั้งปัจจุบัน') : 'วาดขอบเขตก่อนจึงจะสร้างจุดปลูกได้';
   }
+  const mobileAction = $('mobilePrimaryAction');
+  const mobileLabel = mobileAction?.querySelector('span');
+  const mobileIcon = mobileAction?.querySelector('img');
+  const mobileHint = $('mobileActionHint');
+  if (mobileAction && mobileLabel && mobileIcon && mobileHint) {
+    if (!hasBoundary) {
+      mobileLabel.textContent = 'วาดขอบเขตแปลง';
+      mobileIcon.src = 'assets/icons/ui-3d/draw.svg';
+      mobileHint.textContent = 'ขั้นตอนถัดไป: วาดขอบเขตแปลงบนแผนที่';
+      mobileAction.dataset.action = 'draw';
+    } else if (!hasTrees) {
+      mobileLabel.textContent = 'สร้างจุดปลูกปาล์ม';
+      mobileIcon.src = 'assets/icons/ui-3d/plant.svg';
+      mobileHint.textContent = 'ขอบเขตพร้อมแล้ว · กดเพื่อคำนวณจุดปลูก';
+      mobileAction.dataset.action = 'generate';
+    } else {
+      mobileLabel.textContent = 'ดูและแก้จุดปลูก';
+      mobileIcon.src = 'assets/icons/ui-3d/select.svg';
+      mobileHint.textContent = 'สร้างแล้ว ' + trees.length.toLocaleString('th-TH') + ' จุด · แตะจุดบนแผนที่เพื่อแก้ไข';
+      mobileAction.dataset.action = 'review';
+    }
+  }
 }
 
 function getSeedlingPrice() {
@@ -360,6 +382,7 @@ function setSheetCollapsed(collapsed) {
   if (!sidebar || !toggle) return;
   sidebar.classList.toggle('is-collapsed', collapsed);
   toggle.setAttribute('aria-expanded', String(!collapsed));
+  $('mobileToolsToggle')?.setAttribute('aria-expanded', String(!collapsed));
   toggle.querySelector('.sheet-toggle-label').textContent = collapsed ? 'เปิดข้อมูลแปลงและเครื่องมือ' : 'ข้อมูลแปลงและเครื่องมือ';
   try { localStorage.setItem(SHEET_KEY, collapsed ? '1' : '0'); }
   catch (error) { setStorageStatus('เบราว์เซอร์ปิดกั้นพื้นที่บันทึกในเครื่อง'); }
@@ -787,8 +810,30 @@ function recheckAll() {
 
 // ---------- เหตุการณ์ ----------
 if ($('sheetToggle')) $('sheetToggle').addEventListener('click', toggleSheet);
-if (window.matchMedia('(max-width: 720px)').matches) {
-  try { if (localStorage.getItem(SHEET_KEY) === '1') setSheetCollapsed(true); }
+if ($('mobileToolsToggle')) $('mobileToolsToggle').addEventListener('click', () => {
+  const collapsed = $('sidebar').classList.contains('is-collapsed');
+  setSheetCollapsed(!collapsed);
+  $('mobileToolsToggle').setAttribute('aria-expanded', String(collapsed));
+});
+if ($('mobilePrimaryAction')) $('mobilePrimaryAction').addEventListener('click', () => {
+  const action = $('mobilePrimaryAction').dataset.action;
+  if (action === 'draw') {
+    const drawButton = document.querySelector('.leaflet-draw-draw-polygon');
+    if (drawButton) drawButton.click();
+    else setStatus('ใช้เครื่องมือรูปหลายเหลี่ยมบนแผนที่เพื่อเริ่มวาดขอบเขต', 'warn');
+  } else if (action === 'generate') {
+    $('btnGenerate').click();
+  } else {
+    activateCategory('plant');
+    setSheetCollapsed(false);
+    $('mobileToolsToggle')?.setAttribute('aria-expanded', 'true');
+  }
+});
+if (window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-width: 900px)').matches) {
+  try {
+    const savedSheetState = localStorage.getItem(SHEET_KEY);
+    if (savedSheetState === '1' || savedSheetState === null) setSheetCollapsed(true);
+  }
   catch (error) { setStorageStatus('เบราว์เซอร์ปิดกั้นการจำสถานะแผงเครื่องมือ'); }
   map.on('click', () => {
     if (!pickingPlotLocation && !$('sidebar').classList.contains('is-collapsed')) setSheetCollapsed(true);
@@ -796,10 +841,29 @@ if (window.matchMedia('(max-width: 720px)').matches) {
   map.on(L.Draw.Event.DRAWSTART, () => setSheetCollapsed(true));
   map.on(L.Draw.Event.CREATED, () => setSheetCollapsed(false));
 }
+document.addEventListener('click', event => {
+  const control = event.target.closest('.leaflet-draw-edit-edit, .leaflet-draw-edit-remove');
+  if (!control || !trees.length) return;
+  const editing = control.matches('.leaflet-draw-edit-edit');
+  const mode = editing ? map._toolbars?.edit?._modes?.edit?.handler : map._toolbars?.edit?._modes?.remove?.handler;
+  if (mode?.enabled()) return;
+  const message = editing
+    ? 'การแก้ไขขอบเขตและกดบันทึกจะล้างจุดปลูกเดิม รวมถึงจุดที่ลากปรับไว้ ต้องการเข้าโหมดแก้ไขหรือไม่?'
+    : 'การลบขอบเขตจะล้างจุดปลูกทั้งหมด รวมถึงจุดที่ลากปรับไว้ ต้องการเข้าโหมดลบหรือไม่?';
+  if (!confirm(message)) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    setStatus('ยกเลิกการเปลี่ยนขอบเขตแล้ว; จุดปลูกเดิมยังอยู่', 'ok');
+  }
+}, true);
 map.on('click', e => {
   if (pickingPlotLocation) savePlotLocation(e.latlng);
 });
 map.on(L.Draw.Event.CREATED, e => {
+  if (trees.length && !confirm('การวาดขอบเขตใหม่จะแทนแปลงเดิมและล้างจุดปลูกทั้งหมด รวมถึงจุดที่ลากปรับไว้ ต้องการดำเนินการต่อหรือไม่?')) {
+    setStatus('ยกเลิกการวาดขอบเขตใหม่แล้ว; แปลงและจุดปลูกเดิมยังอยู่', 'ok');
+    return;
+  }
   drawnItems.clearLayers();          // จำกัดให้มี 1 Polygon
   clearGrid();
   drawnItems.addLayer(e.layer);
@@ -887,3 +951,4 @@ map.whenReady(() => {
 
 // กู้คืนข้อมูลล่าสุดหลังประกาศ event และฟังก์ชันทั้งหมดแล้ว
 restoreDraft();
+updateWorkflow();
