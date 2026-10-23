@@ -101,7 +101,12 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
   .sheet-chevron { margin: 8px 0 0 auto; font-size: 24px; line-height: 18px; transition: transform .24s ease; }
   #sidebar.is-collapsed .sheet-chevron { transform: rotate(180deg); }
   .app-header { display: none; }
-  .workflow { margin-top: 6px; padding: 7px 8px 6px; }
+  /* Mobile workflow: keep the primary planting action visible without opening another category. */
+  .workflow { order: 1; margin-top: 6px; padding: 7px 8px 6px; }
+  .category-nav { order: 2; }
+  .category-content { order: 3; flex: 1 1 auto; }
+  .primary-action { order: 4; flex: 0 0 auto; padding-top: 5px; background: #fff; }
+  .status-area { order: 5; }
   .workflow li { font-size: 9px; }
   .step-number { width: 18px; height: 18px; flex-basis: 18px; }
   .primary-action #btnGenerate { min-height: 46px; }
