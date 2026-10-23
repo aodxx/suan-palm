@@ -20,7 +20,7 @@ jobs:
         run: npm install --no-save sharp
       - name: Regenerate PNG icon sizes from master SVG
         run: |
-          cat > /tmp/render-icons.cjs <<'NODE'
+          cat > render-icons.cjs <<'NODE'
           const fs = require('fs');
           const path = require('path');
           const sharp = require('sharp');
@@ -49,7 +49,8 @@ jobs:
             }
           })().catch(err => { console.error(err); process.exit(1); });
           NODE
-          node /tmp/render-icons.cjs
+          node render-icons.cjs
+          rm render-icons.cjs
       - name: Commit regenerated icons
         run: |
           git config user.name "github-actions[bot]"
