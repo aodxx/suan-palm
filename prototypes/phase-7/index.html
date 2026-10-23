@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#164a35">
+  <title>Phase 7 — Prototype A/B | สวนปาล์ม</title>
+  <link rel="stylesheet" href="prototype.css">
+</head>
+<body data-prototype-only="true">
+  <main class="p7-shell" id="p7Shell" data-variant="a">
+    <header class="p7-preview-header">
+      <div class="p7-preview-title">
+        <strong>ต้นแบบ Phase 7</strong>
+        <span>หน้าทดลองเท่านั้น · ไม่มีข้อมูลจริง</span>
+      </div>
+      <div class="p7-variant-switch" role="group" aria-label="เลือกต้นแบบ">
+        <button type="button" data-variant="a" aria-pressed="true">A · แถบนำทาง</button>
+        <button type="button" data-variant="b" aria-pressed="false">B · Action Dock</button>
+      </div>
+    </header>
+
+    <section class="p7-map" id="p7Map" aria-label="แผนที่จำลองสำหรับทดสอบแนวคิด ไม่ใช่แผนที่จริง">
+      <div class="p7-map-art" aria-hidden="true">
+        <div class="p7-field p7-field-one"></div>
+        <div class="p7-field p7-field-two"></div>
+        <div class="p7-field p7-field-three"></div>
+        <div class="p7-access-road"></div>
+        <div class="p7-field-road"></div>
+        <span class="p7-place p7-place-one">สวนตัวอย่าง</span>
+        <span class="p7-place p7-place-two">คลองจำลอง</span>
+        <svg class="p7-boundary" viewBox="0 0 600 500" preserveAspectRatio="none" aria-hidden="true">
+          <polygon points="155,150 410,118 462,327 190,365" />
+        </svg>
+      </div>
+      <div class="p7-map-label" id="p7MapHint" aria-live="polite">แผนที่จำลอง · control เป็นภาพตัวอย่าง · แตะ 4 มุมเพื่อวาด</div>
+      <div class="p7-map-controls" aria-label="ตำแหน่ง control วาด/ซูมจำลอง">
+        <span class="p7-map-control">วาด</span>
+        <span class="p7-map-control">แก้</span>
+        <div class="p7-zoom-controls" aria-label="พื้นที่สงวนสำหรับปุ่มซูมจำลอง">
+          <span>+</span>
+          <span>−</span>
+        </div>
+      </div>
+      <div class="p7-layers-control" aria-label="ตำแหน่ง control ชั้นแผนที่จำลอง">ชั้นแผนที่</div>
+      <div class="p7-markers" id="p7Markers" aria-label="จุดปลูกจำลอง"></div>
+    </section>
+
+    <div class="p7-save-status" id="p7SaveStatus" role="status">ข้อมูลจำลอง · ระบบจริงใช้ auto-save</div>
+
+    <section class="p7-context-panel" id="p7ContextPanel" aria-label="คำสั่งตามบริบท">
+      <button type="button" class="p7-collapse" id="p7Collapse" aria-expanded="true" aria-controls="p7ContextDetails" title="ย่อหรือขยายรายละเอียด">⌄ <span>รายละเอียด</span></button>
+      <div class="p7-context-details" id="p7ContextDetails">
+        <div class="p7-context-copy">
+          <span class="p7-step-label" id="p7StepLabel">ขั้น 1 จาก 4 · แปลง</span>
+          <strong id="p7ContextTitle">สร้างแปลงและวาดขอบเขต</strong>
+          <span id="p7ContextDescription">แตะปุ่มหลักเพื่อสร้างแปลงตัวอย่าง แล้วแตะพื้นที่ 4 มุม</span>
+        </div>
+        <div class="p7-context-stats" id="p7ContextStats" aria-live="polite">พื้นที่ — · จุดปลูก —</div>
+        <div class="p7-review-actions" id="p7ReviewActions" hidden>
+          <span class="p7-drag-hint">แตะจุดแล้วลากเพื่อย้าย</span>
+          <button type="button" data-action="delete-tree">ลบจุดที่เลือก</button>
+          <button type="button" data-action="undo" disabled>Undo</button>
+        </div>
+      </div>
+      <div class="p7-primary-row">
+        <button type="button" class="p7-primary-action" id="p7PrimaryAction" data-action="primary">สร้างแปลง + วาด</button>
+        <button type="button" class="p7-finish-action" id="p7FinishAction" data-action="finish-boundary" hidden>ปิดขอบเขตจำลอง</button>
+        <button type="button" class="p7-secondary-report" data-action="open-reports">รายงาน</button>
+      </div>
+      <div class="p7-report-actions" id="p7ReportActions" hidden>
+        <span>ตัวอย่างรูปแบบส่งออก</span>
+        <button type="button" data-action="export-csv">ส่งออก CSV ตัวอย่าง</button>
+      </div>
+      <div class="p7-persist-note" id="p7PersistNote">ไม่มีปุ่มบันทึก · หน้านี้ไม่อ่านหรือเขียนข้อมูลแปลง</div>
+    </section>
+
+    <nav class="p7-primary-nav" id="p7PrimaryNav" aria-label="แถบนำทางหลักของต้นแบบ A">
+      <button type="button" data-destination="plot" aria-current="page"><span aria-hidden="true">▱</span><span>แปลง</span></button>
+      <button type="button" data-destination="plants"><span aria-hidden="true">♧</span><span>จุดปลูก</span></button>
+      <button type="button" data-destination="settings"><span aria-hidden="true">⚙</span><span>ตั้งค่า</span></button>
+      <button type="button" data-destination="reports"><span aria-hidden="true">▤</span><span>รายงาน</span></button>
+    </nav>
+
+    <div class="p7-announcement" id="p7Announcement" aria-live="polite">ต้นแบบ A: หมวดเดิมถูกรวมเป็นแถบนำทางหลักชุดเดียว</div>
+    <noscript><p class="p7-noscript">ต้องเปิด JavaScript เพื่อทดลองเปลี่ยนต้นแบบ</p></noscript>
+  </main>
+  <script src="prototype.js"></script>
+</body>
+</html>
