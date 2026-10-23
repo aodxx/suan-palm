@@ -1,10 +1,17 @@
 // ---------- ส่งออกไฟล์ ----------
 function download(name, mime, text) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type: mime }));
-  a.download = name;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  try {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: mime }));
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    return true;
+  } catch (error) {
+    console.error('File export failed:', error);
+    setStatus('สร้างไฟล์ดาวน์โหลดไม่สำเร็จ กรุณาตรวจสอบเบราว์เซอร์แล้วลองใหม่', 'warn');
+    return false;
+  }
 }
 function currentPoints() {
   return trees.map((t, i) => {
@@ -80,7 +87,9 @@ $('btnGeoJSON').addEventListener('click', () => {
     ระยะห่างระหว่างแถวเมตร: metadata.rowSpacing,
     วันที่สร้าง: metadata.createdAt
   };
-  download('palm-plan.geojson', 'application/geo+json', JSON.stringify(fc, null, 2));
+  if (download('palm-plan.geojson', 'application/geo+json', JSON.stringify(fc, null, 2))) {
+    setStatus('ส่งออก GeoJSON แล้ว · ' + currentPoints().length.toLocaleString('th-TH') + ' จุด', 'ok');
+  }
 });
 $('btnCSV').addEventListener('click', () => {
   const metadata = exportMetadata();
@@ -99,7 +108,9 @@ $('btnCSV').addEventListener('click', () => {
   ];
   const rows = ['id,lat,lng'].concat(currentPoints().map(p =>
     p.id + ',' + p.lat.toFixed(8) + ',' + p.lng.toFixed(8)));
-  download('palm-plan.csv', 'text/csv;charset=utf-8', '﻿' + header.concat(rows).join('\n'));
+  if (download('palm-plan.csv', 'text/csv;charset=utf-8', '﻿' + header.concat(rows).join('\n'))) {
+    setStatus('ส่งออก CSV แล้ว · ' + currentPoints().length.toLocaleString('th-TH') + ' จุด', 'ok');
+  }
 });
 
 // ---------- ส่งออก PDF (เพิ่มในขั้นตอน Export PDF) ----------
