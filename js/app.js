@@ -303,6 +303,7 @@ function requestUserLocation() {
       userLocationMarker = null;
     }
     updateLocationLabel();
+    saveDraft();
     const message = error && error.code === 1
       ? 'ยังไม่ได้รับอนุญาตตำแหน่ง กรุณาอนุญาต Location ในเบราว์เซอร์แล้วลองใหม่'
       : error && error.code === 2

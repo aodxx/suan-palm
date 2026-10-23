@@ -94,6 +94,18 @@ test('replacing, editing, or removing a boundary warns before existing planting 
   assert.match(app, /event\.stopImmediatePropagation\(\)/);
 });
 
+test('GPS permission failure persists the cleared location in the existing draft', () => {
+  const app = read('js/app.js');
+  const requestStart = app.indexOf('navigator.geolocation.getCurrentPosition');
+  const failureStart = app.indexOf('}, error => {', requestStart);
+  const failureEnd = app.indexOf('}, { enableHighAccuracy', failureStart);
+  assert.ok(requestStart >= 0 && failureStart > requestStart && failureEnd > failureStart);
+  const failureHandler = app.slice(failureStart, failureEnd);
+  assert.match(failureHandler, /userLocation\s*=\s*null/);
+  assert.match(failureHandler, /userAddress\s*=\s*null/);
+  assert.match(failureHandler, /saveDraft\(\)/);
+});
+
 test('equilateral planting calculations retain baseline values and supported spacings', () => {
   const context = { window: {} };
   vm.runInNewContext(read('js/calculator.js'), context);
