@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'assets/icons/palm-gps-icon.svg'
+      - 'assets/icons/png-square/palm-gps-icon-square-1024.png'
       - '.github/workflows/regenerate-app-icons.yml'
   workflow_dispatch:
 permissions:
@@ -18,13 +18,13 @@ jobs:
           node-version: 20
       - name: Install image renderer
         run: npm install --no-save sharp
-      - name: Regenerate PNG icon sizes from master SVG
+      - name: Regenerate PNG icon sizes from supplied 1024px PNG
         run: |
           cat > render-icons.cjs <<'NODE'
           const fs = require('fs');
           const path = require('path');
           const sharp = require('sharp');
-          const source = 'assets/icons/palm-gps-icon.svg';
+          const source = 'assets/icons/png-square/palm-gps-icon-square-1024.png';
           const targets = [];
           for (const dir of ['assets/icons/png-square', 'assets/icons/png']) {
             if (!fs.existsSync(dir)) continue;
@@ -33,7 +33,7 @@ jobs:
               const match = name.match(/-(\d+)\.png$/i);
               if (!match) continue;
               const size = Number(match[1]);
-              if (size < 16 || size > 2048) continue;
+              if (size < 16 || size > 2048 || size === 1024) continue;
               targets.push({ file: path.join(dir, name), size });
             }
           }
@@ -44,7 +44,7 @@ jobs:
           (async () => {
             for (const t of targets) {
               fs.mkdirSync(path.dirname(t.file), { recursive: true });
-              await sharp(source, { density: 192 }).resize(t.size, t.size, { fit: 'cover' }).png().toFile(t.file);
+              await sharp(source).resize(t.size, t.size, { fit: 'cover' }).png().toFile(t.file);
               console.log(t.file + ' ' + t.size + 'x' + t.size);
             }
           })().catch(err => { console.error(err); process.exit(1); });
@@ -57,8 +57,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add assets/icons/png assets/icons/png-square
           if ! git diff --cached --quiet; then
-            git commit -m "assets: regenerate app icons from palm GPS master"
+            git commit -m "assets: regenerate app icons from supplied PNG master"
             git push
           else
-            echo "Icon PNGs already match the master SVG."
+            echo "Icon PNGs already match the 1024px PNG master."
           fi
