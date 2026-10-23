@@ -84,6 +84,51 @@ const $ = id => document.getElementById(id);
 const statusEl = $('status');
 function setStatus(text, cls) { statusEl.textContent = text; statusEl.className = cls || ''; }
 
+function activateCategory(name, focus = false) {
+  const tab = document.querySelector('.category-tab[data-panel="' + name + '"]');
+  const panel = document.getElementById('panel-' + name);
+  if (!tab || !panel) return;
+  document.querySelectorAll('.category-tab').forEach(item => {
+    const selected = item === tab;
+    item.classList.toggle('is-active', selected);
+    item.setAttribute('aria-selected', String(selected));
+    item.tabIndex = selected ? 0 : -1;
+  });
+  document.querySelectorAll('.category-panel').forEach(item => {
+    const selected = item === panel;
+    item.hidden = !selected;
+    item.classList.toggle('is-active', selected);
+  });
+  if (focus) tab.focus();
+  requestAnimationFrame(() => map.invalidateSize({ animate: false }));
+}
+
+function updateWorkflow() {
+  const hasName = Boolean(($('plotName')?.value || '').trim());
+  const hasBoundary = Boolean(currentFeature);
+  const hasTrees = trees.length > 0;
+  const complete = [hasName, hasBoundary, hasTrees, hasTrees, hasTrees];
+  const currentIndex = complete.findIndex(done => !done);
+  const steps = Array.from(document.querySelectorAll('#workflowSteps [data-step]'));
+  steps.forEach((step, index) => {
+    step.classList.toggle('is-done', complete[index]);
+    step.classList.toggle('is-current', index === (currentIndex < 0 ? 4 : currentIndex));
+    step.setAttribute('aria-current', index === (currentIndex < 0 ? 4 : currentIndex) ? 'step' : 'false');
+  });
+  const hint = $('nextStepHint');
+  if (hint) {
+    hint.textContent = !hasName ? 'ขั้นตอนถัดไป: ใส่ชื่อแปลงในหมวด “แปลง” (ตำแหน่งเป็นตัวเลือก)' :
+      !hasBoundary ? 'ขั้นตอนถัดไป: ใช้เครื่องมือรูปหลายเหลี่ยมบนแผนที่เพื่อวาดขอบเขต' :
+      !hasTrees ? 'พร้อมแล้ว: กด “สร้างจุดปลูกปาล์ม” เพื่อคำนวณตำแหน่งตามระยะที่ตั้งไว้' :
+      'สร้างจุดปลูกแล้ว: ตรวจจุดบนแผนที่ แก้ไขตำแหน่ง แล้วส่งออกรายงานได้';
+  }
+  const generate = $('btnGenerate');
+  if (generate) {
+    generate.disabled = !hasBoundary;
+    generate.title = hasBoundary ? (hasTrees ? 'สร้างใหม่จะแทนที่จุดที่ปรับตำแหน่งไว้' : 'สร้างจุดปลูกจากขอบเขตและค่าตั้งปัจจุบัน') : 'วาดขอบเขตก่อนจึงจะสร้างจุดปลูกได้';
+  }
+}
+
 function getSeedlingPrice() {
   const input = $('seedlingPrice');
   const value = input ? parseFloat(input.value) : NaN;
@@ -316,7 +361,8 @@ function setSheetCollapsed(collapsed) {
   sidebar.classList.toggle('is-collapsed', collapsed);
   toggle.setAttribute('aria-expanded', String(!collapsed));
   toggle.querySelector('.sheet-toggle-label').textContent = collapsed ? 'เปิดข้อมูลแปลงและเครื่องมือ' : 'ข้อมูลแปลงและเครื่องมือ';
-  localStorage.setItem(SHEET_KEY, collapsed ? '1' : '0');
+  try { localStorage.setItem(SHEET_KEY, collapsed ? '1' : '0'); }
+  catch (error) { setStorageStatus('เบราว์เซอร์ปิดกั้นพื้นที่บันทึกในเครื่อง'); }
   setTimeout(() => map.invalidateSize({ animate: false }), 260);
 }
 
@@ -328,6 +374,17 @@ function setStorageStatus(text) {
   const el = $('storageStatus');
   if (el) el.textContent = text;
 }
+
+document.querySelectorAll('.category-tab').forEach((tab, index, tabs) => {
+  tab.addEventListener('click', () => activateCategory(tab.dataset.panel));
+  tab.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
+      (index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+    activateCategory(tabs[next].dataset.panel, true);
+  });
+});
 
 function saveDraft() {
   if (restoringDraft) return;
@@ -384,6 +441,7 @@ function restoreDraft() {
     draft = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
   } catch (error) {
     console.warn('LocalStorage read failed:', error);
+    setStorageStatus('อ่านข้อมูลที่บันทึกไว้ไม่ได้ เบราว์เซอร์อาจปิดกั้นพื้นที่จัดเก็บ');
     return;
   }
   if (!draft || draft.version !== 1) return;
@@ -491,7 +549,13 @@ function updateCount() {
   $('btnPDF').disabled = !has || !hasPlotName;
   $('btnPrint').disabled = !has || !hasPlotName;
   $('btnUndo').disabled = !removed.length;
+  $('btnGeoJSON').title = has ? 'ดาวน์โหลดข้อมูลจุดปลูกเป็น GeoJSON' : 'สร้างจุดปลูกก่อนจึงจะส่งออก GeoJSON ได้';
+  $('btnCSV').title = has ? 'ดาวน์โหลดข้อมูลจุดปลูกเป็น CSV' : 'สร้างจุดปลูกก่อนจึงจะส่งออก CSV ได้';
+  $('btnPDF').title = !has ? 'สร้างจุดปลูกก่อนจึงจะทำรายงาน PDF ได้' : !hasPlotName ? 'กรอกชื่อแปลงก่อนจึงจะทำรายงาน PDF ได้' : 'ดาวน์โหลดแผนที่และข้อมูลเป็นไฟล์ PDF';
+  $('btnPrint').title = !has ? 'สร้างจุดปลูกก่อนจึงจะพิมพ์รายงานได้' : !hasPlotName ? 'กรอกชื่อแปลงก่อนจึงจะพิมพ์รายงานได้' : 'พิมพ์รายงานหรือบันทึกเป็น PDF';
+  $('btnUndo').title = removed.length ? 'คืนค่าจุดปลูกที่ลบล่าสุด' : 'ลบจุดปลูกก่อนจึงจะเลิกทำได้';
   updateSeedlingCost();
+  updateWorkflow();
 }
 
 function updateArea() {
@@ -500,6 +564,7 @@ function updateArea() {
     currentFeature = null; currentAreaM2 = 0;
     ['areaM2', 'areaRai', 'areaNgan', 'areaWa', 'treeEst'].forEach(id => $(id).textContent = '–');
     $('btnGenerate').disabled = true;
+    updateWorkflow();
     return;
   }
   currentFeature = layers[0].toGeoJSON();
@@ -511,6 +576,7 @@ function updateArea() {
   $('areaWa').textContent   = wa.toFixed(2);
   $('treeEst').textContent  = Math.floor(currentAreaM2 / getSpacingMetrics().areaPerTree).toLocaleString('th-TH') + ' ต้น';
   $('btnGenerate').disabled = false;
+  updateWorkflow();
 }
 
 function clearGrid() {
@@ -650,6 +716,7 @@ function generateGrid() {
   const price = getSeedlingPrice();
   const costText = price !== null ? ' ค่าต้นกล้าประมาณ ' + formatBaht(price * trees.length) : '';
   saveDraft();
+  activateCategory('plant');
   setStatus('✅ สร้างจุดปลูกสำเร็จทั้งหมด ' + trees.length.toLocaleString('th-TH') + ' ต้น (ระยะห่าง ' + spacing.toFixed(1) + ' เมตร).' + costText, 'ok');
 }
 
@@ -721,7 +788,8 @@ function recheckAll() {
 // ---------- เหตุการณ์ ----------
 if ($('sheetToggle')) $('sheetToggle').addEventListener('click', toggleSheet);
 if (window.matchMedia('(max-width: 720px)').matches) {
-  if (localStorage.getItem(SHEET_KEY) === '1') setSheetCollapsed(true);
+  try { if (localStorage.getItem(SHEET_KEY) === '1') setSheetCollapsed(true); }
+  catch (error) { setStorageStatus('เบราว์เซอร์ปิดกั้นการจำสถานะแผงเครื่องมือ'); }
   map.on('click', () => {
     if (!pickingPlotLocation && !$('sidebar').classList.contains('is-collapsed')) setSheetCollapsed(true);
   });
@@ -770,8 +838,12 @@ $('btnClear').addEventListener('click', () => {
   $('btnPickPlot').textContent = '📌 ชี้ตำแหน่งกึ่งกลางแปลง';
   updateLocationLabel();
   updateArea();
-  localStorage.removeItem(STORAGE_KEY);
-  setStorageStatus('ล้างข้อมูลที่บันทึกไว้ในอุปกรณ์แล้ว');
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    setStorageStatus('ล้างข้อมูลที่บันทึกไว้ในอุปกรณ์แล้ว');
+  } catch (error) {
+    setStorageStatus('ล้างข้อมูลบนแผนที่แล้ว แต่เบราว์เซอร์ปิดกั้นการลบข้อมูลที่บันทึกในเครื่อง');
+  }
   setStatus('ล้างข้อมูลแล้ว');
 });
 $('btnCenter').addEventListener('click', () => {

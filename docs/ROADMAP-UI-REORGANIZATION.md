@@ -197,26 +197,26 @@
 
 ## 6. Checklist สำหรับติดตามงาน
 
-- [ ] Phase 0: ทำรายการพฤติกรรมและ baseline
-- [ ] Phase 1: สร้างแถบไอคอนและจัดหมวดเครื่องมือ
-- [ ] Phase 1: ยืนยันว่า event listener และ element ID เดิมยังทำงาน
-- [ ] Phase 2: ปรับมือถือและ Desktop
-- [ ] Phase 3: เพิ่มขั้นตอนแนะนำและสถานะที่ตรงกับข้อมูลจริง
-- [ ] Phase 4: จัดหมวดตั้งค่า/รายงานและแสดงสถานะ LocalStorage
-- [ ] Phase 5: ทดสอบการคำนวณและเครื่องมือเดิม
-- [ ] ทดสอบ Android และ Desktop
-- [ ] อัปเดต README ให้ตรงกับหน้าจอใหม่
-- [ ] บันทึกผลตรวจรับและข้อบกพร่องที่เหลือ
+- [x] Phase 0: ทำรายการพฤติกรรมและ baseline — ดู `PHASE-0-5-ACCEPTANCE.md`
+- [x] Phase 1: สร้างแถบไอคอนและจัดหมวดเครื่องมือ 6 หมวด
+- [x] Phase 1: ยืนยันว่า IDs เดิมไม่ซ้ำและยังอยู่ครบ; ทดสอบการสลับหมวดใน browser
+- [x] Phase 2: ปรับ responsive CSS, bottom sheet, safe-area, touch/focus states — Android จริงยังรอตรวจ
+- [x] Phase 3: เพิ่มขั้นตอนแนะนำและสถานะที่คำนวณจากข้อมูลแผน
+- [x] Phase 4: จัดหมวดตั้งค่า/รายงานและแสดงสถานะ LocalStorage/export
+- [x] Phase 5: เพิ่ม automated regression ของ IDs, tabs, assets, disabled states และสูตรคำนวณ — ผ่าน 7 tests
+- [ ] ทดสอบ Android จริงและ Desktop จริงครบ workflow; browser viewport desktop ผ่าน smoke test แล้ว
+- [x] อัปเดต README ให้ตรงกับหน้าจอใหม่
+- [x] บันทึกผลตรวจรับและข้อบกพร่องที่เหลือใน `PHASE-0-5-ACCEPTANCE.md`
 
 ## 7. นิยามว่าเสร็จแล้ว
 
 งาน UI รอบนี้จะถือว่าเสร็จเมื่อผู้ใช้เข้าถึงเครื่องมือหลักจากหมวดที่เห็นได้ทันที ไม่ต้องไล่เลื่อนหา, ชื่อหมวดและปุ่มเข้าใจง่ายเป็นภาษาไทย, แผนที่ใช้ได้ทั้งมือถือและคอมพิวเตอร์, การบันทึก/ส่งออกแสดงสถานะตรงตามจริง และฟังก์ชันเดิมทั้งหมดผ่านรายการทดสอบ regression แล้ว
 
-**หมายเหตุ:** เอกสารนี้เป็น roadmap สำหรับการพัฒนา ไม่ใช่การยืนยันว่ามีการเปลี่ยน UI หรือทดสอบบนอุปกรณ์จริงแล้ว
+**สถานะรอบ 2026-10-23:** ทำ implementation Phase 0–4 และ automated regression Phase 5 แล้ว; ยังไม่ประกาศปิดทั้ง roadmap เพราะต้องทดสอบ Android จริงและ end-to-end actions ที่ระบุใน acceptance report
 
 ## 8. การเชื่อมชุดไอคอน 3D ที่มีอยู่กับ Phase 0–5
 
-ชุด SVG อยู่ใน `assets/icons/ui-3d/` และเป็นไฟล์ asset แยก ไม่ใช่ UI ที่เชื่อมกับปุ่มแล้ว การมีไฟล์อยู่ใน repo ยังไม่ถือว่าการแสดงผลหรือการทำงานผ่านการทดสอบแล้ว
+ชุด SVG ใน `assets/icons/ui-3d/` เชื่อมเป็นภาพประกอบบนปุ่มหมวด/คำสั่งแล้ว โดยชื่อไทยที่มองเห็นยังเป็นตัวบอกความหมาย ไอคอนไม่มี event handler แยกจากปุ่ม; ดูผลตรวจและข้อจำกัดใน `PHASE-0-5-ACCEPTANCE.md`
 
 ### รายชื่อไฟล์และการใช้งานที่แนะนำ
 
@@ -265,9 +265,8 @@
 ### สถานะตรวจรับของชุดไอคอน
 
 - [x] พบไฟล์ SVG ใน `assets/icons/ui-3d/` บน branch `main`
-- [ ] ตรวจการแสดงผลของไอคอนทั้งหมดในหน้าเว็บจริง
-- [ ] เชื่อมไอคอนกับปุ่มและหมวดใน `index.html`
-- [ ] ตรวจ CSS responsive และ accessibility
-- [ ] ทดสอบ action เดิมและ regression ตาม Phase 5
-- [ ] อัปเดต README และบันทึกผลทดสอบหลังการเชื่อมจริง
-
+- [x] ตรวจว่า referenced SVG โหลดใน browser และทดสอบว่ามี SVG/viewBox
+- [x] เชื่อมไอคอนกับปุ่มและหมวดใน `index.html`
+- [x] เพิ่ม CSS responsive/accessibility affordances; Android device verification ยัง pending
+- [x] Automated regression ตาม Phase 5 ผ่าน; end-to-end actions ยัง pending
+- [x] อัปเดต README และ acceptance report
