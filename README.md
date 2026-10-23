@@ -66,7 +66,7 @@ node --check js/calculator.js
 node --check js/exporter.js
 ```
 
-รายงานผลทดสอบและรายการตรวจที่ยังต้องทำบน Android จริงอยู่ใน [`docs/PHASE-0-5-ACCEPTANCE.md`](docs/PHASE-0-5-ACCEPTANCE.md)
+รายงานผลทดสอบและรายการตรวจที่ยังต้องทำบน Android จริงอยู่ใน [`docs/PHASE-0-5-ACCEPTANCE.md`](docs/PHASE-0-5-ACCEPTANCE.md)\n\nแผนพัฒนา UX รอบถัดไปที่อิงภาพตัวอย่างและแอปอ้างอิงอยู่ใน [`docs/ROADMAP-UX-REFERENCE-BASED.md`](docs/ROADMAP-UX-REFERENCE-BASED.md) (Phase 6–10)
 
 หน้าเว็บเชื่อมโยง favicon, ไอคอน Apple Touch และ `site.webmanifest` แล้ว ผู้ใช้สามารถเลือก **เพิ่มไปยังหน้าจอหลัก** บน Android หรือ iOS ได้ โดยใช้ไอคอนชุดเดียวกันในขนาดที่เหมาะสม
 
