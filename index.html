@@ -40,26 +40,11 @@
 <noscript><div class="noscript">กรุณาเปิดใช้งาน JavaScript เพื่อใช้แผนที่และคำนวณจุดปลูกปาล์ม</div></noscript>
 <div id="app">
   <aside id="sidebar" aria-label="เครื่องมือวางแผนสวนปาล์ม">
-    <button id="sheetToggle" class="sheet-toggle" type="button" aria-expanded="true" aria-controls="sidebarContent">
-      <span class="sheet-grip" aria-hidden="true"></span><span class="sheet-toggle-label">เครื่องมือวางแผนสวนปาล์ม</span><span class="sheet-chevron" aria-hidden="true">⌄</span>
-    </button>
     <div id="sidebarContent">
       <header class="app-header">
         <h1><img class="brand-icon" src="assets/icons/png/palm-gps-icon-32.png" alt=""> วางแผนปลูกปาล์ม</h1>
         <div class="sub">ปลูกแบบสามเหลี่ยมด้านเท่า 9 × 9 × 9 เมตร</div>
       </header>
-
-      <section class="workflow" aria-labelledby="workflowTitle">
-        <h2 id="workflowTitle">ขั้นตอนวางแผน</h2>
-        <ol id="workflowSteps">
-          <li data-step="plot"><span class="step-number">1</span><span>ระบุแปลง</span></li>
-          <li data-step="boundary"><span class="step-number">2</span><span>วาดขอบเขต</span></li>
-          <li data-step="plant"><span class="step-number">3</span><span>สร้างจุดปลูก</span></li>
-          <li data-step="review"><span class="step-number">4</span><span>ตรวจและแก้ไข</span></li>
-          <li data-step="report"><span class="step-number">5</span><span>ส่งออกรายงาน</span></li>
-        </ol>
-        <p id="nextStepHint" class="next-step-hint" aria-live="polite">เริ่มจากใส่ชื่อแปลง หรือวาดขอบเขตบนแผนที่</p>
-      </section>
 
       <div class="primary-action">
         <button id="btnGenerate" type="button" disabled title="วาดขอบเขตก่อนจึงจะสร้างจุดปลูกได้">
@@ -67,17 +52,8 @@
         </button>
       </div>
 
-      <nav class="category-nav" role="tablist" aria-label="หมวดเครื่องมือ">
-        <button class="category-tab is-active" id="tab-plot" type="button" role="tab" aria-selected="true" aria-controls="panel-plot" data-panel="plot"><img src="assets/icons/ui-3d/plot.svg" alt="" aria-hidden="true"><span>แปลง</span></button>
-        <button class="category-tab" id="tab-draw" type="button" role="tab" aria-selected="false" aria-controls="panel-draw" data-panel="draw" tabindex="-1"><img src="assets/icons/ui-3d/draw.svg" alt="" aria-hidden="true"><span>วาด/แก้ไข</span></button>
-        <button class="category-tab" id="tab-plant" type="button" role="tab" aria-selected="false" aria-controls="panel-plant" data-panel="plant" tabindex="-1"><img src="assets/icons/ui-3d/plant.svg" alt="" aria-hidden="true"><span>ปลูกปาล์ม</span></button>
-        <button class="category-tab" id="tab-settings" type="button" role="tab" aria-selected="false" aria-controls="panel-settings" data-panel="settings" tabindex="-1"><img src="assets/icons/ui-3d/settings.svg" alt="" aria-hidden="true"><span>ตั้งค่า</span></button>
-        <button class="category-tab" id="tab-report" type="button" role="tab" aria-selected="false" aria-controls="panel-report" data-panel="report" tabindex="-1"><img src="assets/icons/ui-3d/report.svg" alt="" aria-hidden="true"><span>รายงาน</span></button>
-        <button class="category-tab" id="tab-more" type="button" role="tab" aria-selected="false" aria-controls="panel-more" data-panel="more" tabindex="-1"><img src="assets/icons/ui-3d/more.svg" alt="" aria-hidden="true"><span>เพิ่มเติม</span></button>
-      </nav>
-
       <main class="category-content">
-        <section class="category-panel is-active" id="panel-plot" role="tabpanel" aria-labelledby="tab-plot" data-category="plot">
+        <section class="category-panel" id="panel-plot" aria-label="ข้อมูลแปลง">
           <div class="card"><h2><img class="inline-icon" src="assets/icons/ui-3d/plot.svg" alt="" aria-hidden="true"> ข้อมูลแปลง</h2>
             <div class="field"><label for="plotName">ชื่อแปลง/เจ้าของแปลง <span class="required-mark">* จำเป็นก่อนดาวน์โหลดรายงาน PDF</span></label><input type="text" id="plotName" placeholder="เช่น สวนปาล์มบ้านเรา" maxlength="120" required aria-required="true"></div>
             <button id="btnPickPlot" class="btn-plot-location" type="button" title="กดแล้วแตะจุดกึ่งกลางแปลงบนแผนที่"><img class="inline-icon" src="assets/icons/ui-3d/locate.svg" alt="" aria-hidden="true"> ชี้ตำแหน่งกึ่งกลางแปลง</button>
@@ -88,18 +64,18 @@
           </div>
         </section>
 
-        <section class="category-panel" id="panel-draw" role="tabpanel" aria-labelledby="tab-draw" data-category="draw" hidden>
+        <section class="category-panel" id="panel-draw" aria-label="วาดและแก้ไขขอบเขต">
           <div class="card"><h2><img class="inline-icon" src="assets/icons/ui-3d/draw.svg" alt="" aria-hidden="true"> วาดและแก้ไขขอบเขต</h2><p class="panel-help">ใช้เครื่องมือบนแผนที่เพื่อวาด แก้ไข หรือลบขอบเขตแปลง การแก้ไขหรือลบขอบเขตจะล้างจุดปลูกเดิมเพื่อป้องกันข้อมูลไม่ตรงกัน</p><div class="tool-tip">เครื่องมือวาดอยู่บริเวณมุมซ้ายบนของแผนที่</div></div>
         </section>
 
-        <section class="category-panel" id="panel-plant" role="tabpanel" aria-labelledby="tab-plant" data-category="plant" hidden>
+        <section class="category-panel" id="panel-plant" aria-label="สรุปและแก้ไขจุดปลูก">
           <div class="card"><h2><img class="inline-icon" src="assets/icons/ui-3d/calculate.svg" alt="" aria-hidden="true"> สรุปจำนวนต้น</h2>
             <div class="row"><span>ประมาณการตามสูตร</span><b id="treeEst">–</b></div><div class="row"><span>จำนวนจุดที่สร้างจริง</span><b class="big" id="treeActual">–</b></div><div class="row"><span>ความหนาแน่นจริง (ต้น/ไร่)</span><b id="treeDensity">–</b></div><div class="row"><span>ต้นต่อไร่ (ทฤษฎี)</span><b id="treePerRai">–</b></div><div class="row"><span>ระยะห่างระหว่างแถว</span><b id="rowSpacing">–</b></div>
           </div>
           <div class="card"><h2><img class="inline-icon" src="assets/icons/ui-3d/measure.svg" alt="" aria-hidden="true"> ตรวจจุดปลูก</h2><p class="panel-help">ลากจุดสีเขียวเพื่อปรับตำแหน่ง จุดสีแดงหมายถึงอยู่ใกล้จุดข้างเคียงกว่าระยะที่ตั้งไว้ แตะจุดเพื่อเลือกคำสั่งลบ และกดเลิกทำได้</p><button id="btnUndo" class="btn2" type="button" disabled><img class="inline-icon" src="assets/icons/ui-3d/undo.svg" alt="" aria-hidden="true"> เลิกทำการลบต้น (Ctrl+Z)</button></div>
         </section>
 
-        <section class="category-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" data-category="settings" hidden>
+        <section class="category-panel" id="panel-settings" aria-label="ตั้งค่าการปลูก">
           <div class="card"><h2><img class="inline-icon" src="assets/icons/ui-3d/settings.svg" alt="" aria-hidden="true"> ตั้งค่าการสร้างกริด</h2>
             <div class="field"><label for="spacing">ระยะห่างระหว่างต้น (เมตร)</label><input type="number" id="spacing" value="9" min="3" max="20" step="0.1" inputmode="decimal"><div class="field-hint">รองรับ 3–20 เมตร; ค่าเริ่มต้น 9 เมตร หากมีกริดแล้ว การเปลี่ยนระยะจะถามยืนยันก่อนสร้างใหม่</div></div>
             <div class="field"><label for="rotation">หมุนแนวแถว (องศา, -90 ถึง 90)</label><input type="number" id="rotation" value="0" step="1" min="-90" max="90"></div>
@@ -108,7 +84,7 @@
           <div class="card"><h2>ประมาณการค่าต้นกล้า</h2><div class="field"><label for="seedlingPrice">ราคาต้นกล้า (บาท/ต้น)</label><input type="number" id="seedlingPrice" min="0" step="0.01" inputmode="decimal" placeholder="เช่น 35"></div><div class="row"><span>ค่าต้นกล้ารวม</span><b class="cost-total" id="seedlingTotal">–</b></div></div>
         </section>
 
-        <section class="category-panel" id="panel-report" role="tabpanel" aria-labelledby="tab-report" data-category="report" hidden>
+        <section class="category-panel" id="panel-report" aria-label="รายงานและส่งออก">
           <div class="card"><h2><img class="inline-icon" src="assets/icons/ui-3d/report.svg" alt="" aria-hidden="true"> รายงานและส่งออก</h2><p class="panel-help">PDF หรือพิมพ์รายงานเหมาะสำหรับอ่านและพิมพ์ ส่วน CSV และ GeoJSON ใช้นำข้อมูลไปวิเคราะห์ต่อ</p>
             <button id="btnPDF" class="btn-pdf" type="button" disabled title="สร้างจุดปลูกก่อนจึงจะทำรายงาน PDF ได้"><img class="inline-icon" src="assets/icons/ui-3d/pdf.svg" alt="" aria-hidden="true"> ดาวน์โหลดแผนที่ + ข้อมูล (PDF)</button>
             <button id="btnPrint" class="btn-print" type="button" disabled title="สร้างจุดปลูกก่อนจึงจะพิมพ์รายงานได้">🖨️ พิมพ์รายงาน / บันทึกเป็น PDF</button>
@@ -116,7 +92,7 @@
           </div>
         </section>
 
-        <section class="category-panel" id="panel-more" role="tabpanel" aria-labelledby="tab-more" data-category="more" hidden>
+        <section class="category-panel" id="panel-more" aria-label="ตำแหน่งและข้อมูล">
           <div class="card"><h2>ตำแหน่งมือถือและแผนที่</h2><button id="btnLocate" class="btn-location" type="button" title="กดเพื่ออนุญาตให้เว็บใช้ตำแหน่งของคุณ"><img class="inline-icon" src="assets/icons/ui-3d/locate.svg" alt="" aria-hidden="true"> อนุญาตและใช้ตำแหน่งของฉัน</button><div id="locationStatus" class="location-status user-location-status">🔵 ตำแหน่งมือถือ: ยังไม่ได้อนุญาต</div><div class="field-hint">ตำแหน่งมือถือใช้เลื่อนแผนที่เท่านั้น แยกจากตำแหน่งกึ่งกลางแปลง</div><button id="btnCenter" class="btn2" type="button">📍 กลับไปตำแหน่งของฉัน</button></div>
           <div class="card"><h2>วิธีใช้และข้อมูล</h2><p class="help">1. ระบุแปลงและวาดขอบเขต<br>2. ตั้งค่าระยะปลูกตามต้องการ<br>3. สร้างจุดปลูก แล้วตรวจ/ลากแก้ไขจุด<br>4. ส่งออกรายงานหรือไฟล์ข้อมูล</p><p class="privacy-note">ข้อมูลแผนบันทึกอัตโนมัติในเบราว์เซอร์ของอุปกรณ์นี้ ไม่ได้ซิงก์ไปอุปกรณ์อื่น และไม่ใช่ไฟล์สำรองที่ดาวน์โหลดได้</p><button id="btnClear" class="btn-danger" type="button"><img class="inline-icon" src="assets/icons/ui-3d/delete.svg" alt="" aria-hidden="true"> ล้างข้อมูลแผนทั้งหมด</button></div>
         </section>
@@ -126,15 +102,6 @@
     </div>
   </aside>
   <div id="map" role="application" aria-label="แผนที่สำหรับวาดขอบเขตและจัดการจุดปลูก"></div>
-  <div class="mobile-action-dock" aria-label="คำสั่งงานหลักบนมือถือ">
-    <p id="mobileActionHint" aria-live="polite">เริ่มจากวาดขอบเขตแปลง</p>
-    <button id="mobilePrimaryAction" type="button">
-      <img src="assets/icons/ui-3d/draw.svg" alt="" aria-hidden="true"><span>วาดขอบเขตแปลง</span>
-    </button>
-    <button id="mobileToolsToggle" type="button" aria-controls="sidebarContent" aria-expanded="false">
-      <img src="assets/icons/ui-3d/more.svg" alt="" aria-hidden="true"><span>เครื่องมือ</span>
-    </button>
-  </div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
