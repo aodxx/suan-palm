@@ -154,12 +154,22 @@ function updateWorkflow() {
 function updateMapSummary() {
   const area = $('mapAreaSummary');
   const count = $('mapTreeSummary');
+  const perimeter = $('mapPerimeterSummary');
+  const perimeterLabel = $('mapPerimeterLabel');
   if (area) {
-    const rai = $('areaRai')?.textContent || '–';
-    const ngan = $('areaNgan')?.textContent || '–';
-    area.textContent = currentFeature ? `${rai} ไร่ ${ngan} งาน` : '– ไร่';
+    area.textContent = currentFeature ? formatMapArea(currentAreaM2) : '– ไร่';
   }
   if (count) count.textContent = trees.length ? trees.length.toLocaleString('th-TH') + ' ต้น' : 'ยังไม่สร้าง';
+  if (perimeter && !mobileBoundaryMode) {
+    const meters = currentFeature ? turf.length(currentFeature, { units: 'kilometers' }) * 1000 : 0;
+    if (lastMeasuredDistance !== null) {
+      if (perimeterLabel) perimeterLabel.textContent = 'ระยะวัด';
+      perimeter.textContent = formatMapDistance(lastMeasuredDistance);
+    } else {
+      if (perimeterLabel) perimeterLabel.textContent = 'แนวเขต';
+      perimeter.textContent = currentFeature ? formatMapDistance(meters) : '– ม.';
+    }
+  }
 }
 
 function getSeedlingPrice() {
@@ -382,6 +392,192 @@ let origin = null;           // {lng0, lat0, mLng, mLat} สำหรับแ�
 let trees = [];              // [{marker, x, y}]  x,y เป็นเมตรในระบบพิกัดท้องถิ่น
 let hash = new Map();        // Spatial hash สำหรับหาเพื่อนบ้านเร็ว ๆ
 let lastGeneratedSpacing = SPACING;
+let mobileBoundaryMode = false;
+let mobileBoundaryKind = 'boundary';
+let lastMeasuredDistance = null;
+let mobileBoundaryPoints = [];
+let mobileBoundaryLine = null;
+let mobileBoundaryPreview = null;
+let mobileBoundaryMarkers = [];
+let mobileBoundaryDistanceMarkers = [];
+let mobilePreviewDistanceMarker = null;
+
+function usesMobileMapUI() {
+  return window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-width: 900px)').matches;
+}
+
+function formatMapDistance(meters) {
+  return meters >= 1000 ? (meters / 1000).toFixed(2) + ' กม.' : meters.toFixed(1) + ' ม.';
+}
+
+function formatMapArea(squareMeters, preview = false) {
+  if (squareMeters < 400) return (preview ? '≈ ' : '') + squareMeters.toLocaleString('th-TH', { maximumFractionDigits: 0 }) + ' ตร.ม.';
+  return (preview ? '≈ ' : '') + (squareMeters / RAI_M2).toFixed(2) + ' ไร่';
+}
+
+function updateMobileMeasurePreview() {
+  if (!mobileBoundaryMode) return;
+  const center = map.getCenter();
+  const liveSegment = mobileBoundaryPoints.length ? map.distance(mobileBoundaryPoints.at(-1), center) : 0;
+  const segment = mobileBoundaryPoints.length > 1 && liveSegment < 1
+    ? map.distance(mobileBoundaryPoints.at(-2), mobileBoundaryPoints.at(-1))
+    : liveSegment;
+  let total = liveSegment;
+  for (let i = 1; i < mobileBoundaryPoints.length; i++) total += map.distance(mobileBoundaryPoints[i - 1], mobileBoundaryPoints[i]);
+  if (mobileBoundaryKind === 'boundary' && mobileBoundaryPoints.length >= 3) total += map.distance(center, mobileBoundaryPoints[0]);
+  const summary = $('mapPerimeterSummary');
+  if (summary) summary.textContent = formatMapDistance(total);
+  const perimeterLabel = $('mapPerimeterLabel');
+  if (perimeterLabel) perimeterLabel.textContent = mobileBoundaryKind === 'measure' ? 'ระยะวัด' : 'แนวเขต';
+  const segmentEl = $('mapSegmentDistance');
+  if (segmentEl) segmentEl.textContent = mobileBoundaryPoints.length ? 'ช่วงล่าสุด ' + formatMapDistance(segment) : 'แตะ + เพื่อปักจุดแรก';
+  const hint = $('mapBoundaryHint');
+  if (hint) hint.textContent = mobileBoundaryPoints.length + ' จุด · เลื่อนแผนที่แล้วกด +';
+  if (mobileBoundaryPreview) {
+    const preview = mobileBoundaryPoints.length ? [mobileBoundaryPoints.at(-1), center] : [];
+    if (mobileBoundaryKind === 'boundary' && mobileBoundaryPoints.length >= 3) preview.push(mobileBoundaryPoints[0]);
+    mobileBoundaryPreview.setLatLngs(preview);
+  }
+  if (mobilePreviewDistanceMarker) map.removeLayer(mobilePreviewDistanceMarker);
+  mobilePreviewDistanceMarker = null;
+  if (mobileBoundaryPoints.length && liveSegment >= 1) {
+    const last = mobileBoundaryPoints.at(-1);
+    const midpoint = L.latLng((last.lat + center.lat) / 2, (last.lng + center.lng) / 2);
+    mobilePreviewDistanceMarker = L.marker(midpoint, {
+      interactive: false,
+      icon: L.divIcon({ className: 'boundary-distance-icon', html: formatMapDistance(liveSegment), iconSize: [68, 25], iconAnchor: [34, 12] })
+    }).addTo(map);
+  }
+  if (mobileBoundaryKind === 'boundary' && mobileBoundaryPoints.length >= 3) {
+    try {
+      const ring = mobileBoundaryPoints.map(p => [p.lng, p.lat]);
+      ring.push(ring[0]);
+      const areaM2 = turf.area(turf.polygon([ring]));
+      const area = $('mapAreaSummary');
+      if (area) area.textContent = formatMapArea(areaM2, true);
+    } catch (error) { /* Leave the committed summary in place until a valid polygon exists. */ }
+  }
+}
+
+function renderMobileBoundaryPoints() {
+  if (mobileBoundaryLine) mobileBoundaryLine.setLatLngs(mobileBoundaryPoints);
+  mobileBoundaryMarkers.forEach(marker => map.removeLayer(marker));
+  mobileBoundaryDistanceMarkers.forEach(marker => map.removeLayer(marker));
+  mobileBoundaryMarkers = mobileBoundaryPoints.map((point, index) => L.marker(point, {
+    interactive: false,
+    icon: L.divIcon({ className: 'boundary-number-icon', html: '<b>' + (index + 1) + '</b>', iconSize: [30, 30], iconAnchor: [15, 15] })
+  }).addTo(map));
+  mobileBoundaryDistanceMarkers = mobileBoundaryPoints.slice(1).map((point, index) => {
+    const previous = mobileBoundaryPoints[index];
+    const midpoint = L.latLng((previous.lat + point.lat) / 2, (previous.lng + point.lng) / 2);
+    return L.marker(midpoint, {
+      interactive: false,
+      icon: L.divIcon({ className: 'boundary-distance-icon', html: formatMapDistance(map.distance(previous, point)), iconSize: [68, 25], iconAnchor: [34, 12] })
+    }).addTo(map);
+  });
+  const undo = $('mapBoundaryUndo');
+  if (undo) undo.hidden = mobileBoundaryPoints.length === 0;
+  const finish = mobileBoundaryKind === 'measure' ? mobileBoundaryPoints.length >= 2 : mobileBoundaryPoints.length >= 3;
+  if (mapPrimaryAction && mobileBoundaryMode) {
+    mapPrimaryAction.textContent = finish ? '✓' : '+';
+    mapPrimaryAction.dataset.canFinish = String(finish);
+    mapPrimaryAction.setAttribute('aria-label', finish ? (mobileBoundaryKind === 'measure' ? 'เสร็จสิ้นการวัดระยะ' : 'ยืนยันและบันทึกขอบเขตแปลง') : 'ปักจุดที่กากบาท');
+    mapPrimaryAction.title = finish ? (mobileBoundaryKind === 'measure' ? 'เสร็จสิ้นการวัด' : 'ยืนยันขอบเขต') : 'ปักจุดนี้';
+  }
+  updateMobileMeasurePreview();
+}
+
+function startMobileBoundary(kind = 'boundary') {
+  mobileBoundaryPoints = [];
+  mobileBoundaryMode = true;
+  mobileBoundaryKind = kind;
+  lastMeasuredDistance = null;
+  mobileBoundaryLine = L.polyline([], { color: '#f28c28', weight: 4, opacity: 0.95 }).addTo(map);
+  mobileBoundaryPreview = L.polyline([], { color: '#ffffff', weight: 3, dashArray: '5 7', opacity: 0.95 }).addTo(map);
+  $('mapActionMenu').hidden = true;
+  $('mapPrimaryAction').setAttribute('aria-expanded', 'false');
+  $('mapPrimaryAction').textContent = '+';
+  $('mapPrimaryAction').dataset.canFinish = 'false';
+  $('mapPrimaryAction').setAttribute('aria-label', 'ปักจุดที่กากบาท');
+  $('mapPrimaryAction').title = 'เลื่อนแผนที่และกด + เพื่อเพิ่มจุด';
+  $('mapMeasureBadge').hidden = false;
+  $('mapUI').classList.add('is-drawing');
+  if ($('mapBoundaryUndo')) $('mapBoundaryUndo').hidden = true;
+  setStatus(kind === 'measure'
+    ? 'โหมดวัดระยะ: เลื่อนแผนที่ให้กากบาทตรงจุด แล้วกด + เพื่อปักจุด'
+    : 'โหมดวาดขอบเขต: เลื่อนแผนที่ให้กากบาทตรงมุมแปลง แล้วกด + เพื่อปักจุด', 'ok');
+  renderMobileBoundaryPoints();
+}
+
+function stopMobileBoundary() {
+  mobileBoundaryMode = false;
+  mobileBoundaryPoints = [];
+  mobileBoundaryMarkers.forEach(marker => map.removeLayer(marker));
+  mobileBoundaryDistanceMarkers.forEach(marker => map.removeLayer(marker));
+  mobileBoundaryDistanceMarkers = [];
+  if (mobilePreviewDistanceMarker) map.removeLayer(mobilePreviewDistanceMarker);
+  mobilePreviewDistanceMarker = null;
+  mobileBoundaryMarkers = [];
+  if (mobileBoundaryLine) map.removeLayer(mobileBoundaryLine);
+  if (mobileBoundaryPreview) map.removeLayer(mobileBoundaryPreview);
+  mobileBoundaryLine = null;
+  mobileBoundaryPreview = null;
+  $('mapUI')?.classList.remove('is-drawing');
+  if ($('mapMeasureBadge')) $('mapMeasureBadge').hidden = true;
+  if ($('mapBoundaryUndo')) $('mapBoundaryUndo').hidden = true;
+  if ($('mapPrimaryAction')) {
+    $('mapPrimaryAction').textContent = '+';
+    $('mapPrimaryAction').dataset.canFinish = 'false';
+    $('mapPrimaryAction').setAttribute('aria-label', 'เปิดคำสั่งแผนที่');
+    $('mapPrimaryAction').title = 'เปิดคำสั่งแผนที่';
+  }
+  mobileBoundaryKind = 'boundary';
+  updateMapSummary();
+}
+
+function addMobileBoundaryPoint() {
+  const center = map.getCenter();
+  const last = mobileBoundaryPoints.at(-1);
+  if (last && map.distance(last, center) < 0.25) {
+    setStatus('จุดนี้ใกล้กับจุดก่อนหน้าเกินไป เลื่อนแผนที่เล็กน้อยก่อนปักจุด', 'warn');
+    return;
+  }
+  mobileBoundaryPoints.push(L.latLng(center.lat, center.lng));
+  renderMobileBoundaryPoints();
+  setStatus('ปักจุดที่ ' + mobileBoundaryPoints.length + ' แล้ว · เลื่อนแผนที่ไปยังมุมถัดไป', 'ok');
+}
+
+function undoMobileBoundaryPoint() {
+  if (!mobileBoundaryPoints.length) return;
+  mobileBoundaryPoints.pop();
+  renderMobileBoundaryPoints();
+  setStatus('ย้อนจุดล่าสุดแล้ว · เหลือ ' + mobileBoundaryPoints.length + ' จุด', 'ok');
+}
+
+function finishMobileBoundary() {
+  if (mobileBoundaryKind === 'measure') {
+    if (mobileBoundaryPoints.length < 2) {
+      setStatus('ต้องปักอย่างน้อย 2 จุดก่อนจบการวัด', 'warn');
+      return;
+    }
+    lastMeasuredDistance = mobileBoundaryPoints.slice(1).reduce((sum, point, index) => sum + map.distance(mobileBoundaryPoints[index], point), 0);
+    stopMobileBoundary();
+    updateMapSummary();
+    setStatus('วัดระยะได้ ' + formatMapDistance(lastMeasuredDistance) + ' · แนววัดนี้ไม่เปลี่ยนขอบเขตแปลง', 'ok');
+    return;
+  }
+  if (mobileBoundaryPoints.length < 3) {
+    setStatus('ต้องปักอย่างน้อย 3 จุดก่อนยืนยันขอบเขต', 'warn');
+    return;
+  }
+  const coords = mobileBoundaryPoints.map(point => [point.lat, point.lng]);
+  const layer = L.polygon(coords, PLOT_BOUNDARY_STYLE);
+  map.fire(L.Draw.Event.CREATED, { layer, layerType: 'polygon' });
+  if (drawnItems.hasLayer(layer)) {
+    stopMobileBoundary();
+    setStatus('บันทึกขอบเขตแล้ว · ตรวจพื้นที่และกดสร้างจุดปลูกได้', 'ok');
+  }
+}
 
 // ---------- บันทึกข้อมูลแปลงไว้ในอุปกรณ์ของผู้ใช้ ----------
 const STORAGE_KEY = 'suan-palm-draft-v1';
@@ -852,13 +1048,25 @@ function closeMapActionMenu() {
   mapPrimaryAction.setAttribute('aria-expanded', 'false');
 }
 if (mapPrimaryAction) mapPrimaryAction.addEventListener('click', () => {
+  if (mobileBoundaryMode) {
+    const minPoints = mobileBoundaryKind === 'measure' ? 2 : 3;
+    if (mobileBoundaryPoints.length >= minPoints) finishMobileBoundary();
+    else addMobileBoundaryPoint();
+    return;
+  }
   const open = mapPrimaryAction.getAttribute('aria-expanded') !== 'true';
   mapActionMenu.hidden = !open;
   mapPrimaryAction.setAttribute('aria-expanded', String(open));
 });
 if ($('mapDrawAction')) $('mapDrawAction').addEventListener('click', () => {
   closeMapActionMenu();
-  document.querySelector('.leaflet-draw-draw-polygon')?.click();
+  if (usesMobileMapUI()) startMobileBoundary();
+  else document.querySelector('.leaflet-draw-draw-polygon')?.click();
+});
+if ($('mapMeasureAction')) $('mapMeasureAction').addEventListener('click', () => {
+  closeMapActionMenu();
+  if (usesMobileMapUI()) startMobileBoundary('measure');
+  else setStatus('ใช้เครื่องมือวัดบนแผนที่ในโหมดมือถือ หรือวาด Polygon เพื่อดูความยาวแนวเขต', 'warn');
 });
 if ($('mapPlantAction')) $('mapPlantAction').addEventListener('click', () => {
   closeMapActionMenu();
@@ -870,13 +1078,55 @@ if ($('mapPlantAction')) $('mapPlantAction').addEventListener('click', () => {
 });
 if ($('mapPlotPinAction')) $('mapPlotPinAction').addEventListener('click', () => {
   closeMapActionMenu();
-  $('btnPickPlot').click();
+  if (usesMobileMapUI()) savePlotLocation(map.getCenter());
+  else $('btnPickPlot').click();
 });
 if ($('mapLocateAction')) $('mapLocateAction').addEventListener('click', () => $('btnLocate').click());
-if ($('mapLayersAction')) $('mapLayersAction').addEventListener('click', () => document.querySelector('.leaflet-control-layers-toggle')?.click());
-if ($('mapHomeShortcut')) $('mapHomeShortcut').addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-if ($('mapToolsShortcut')) $('mapToolsShortcut').addEventListener('click', () => $('panel-settings').scrollIntoView({ behavior: 'smooth', block: 'start' }));
-if ($('mapReportShortcut')) $('mapReportShortcut').addEventListener('click', () => $('panel-report').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+function closeMapLayerSheet() {
+  if ($('mapLayerSheet')) $('mapLayerSheet').hidden = true;
+  if ($('mapLayerScrim')) $('mapLayerScrim').hidden = true;
+  $('mapLayersAction')?.setAttribute('aria-expanded', 'false');
+}
+if ($('mapLayersAction')) $('mapLayersAction').addEventListener('click', () => {
+  closeMapActionMenu();
+  const open = $('mapLayerSheet').hidden;
+  $('mapLayerSheet').hidden = !open;
+  $('mapLayerScrim').hidden = !open;
+  $('mapLayersAction').setAttribute('aria-expanded', String(open));
+});
+$('mapLayerClose')?.addEventListener('click', closeMapLayerSheet);
+$('mapLayerScrim')?.addEventListener('click', closeMapLayerSheet);
+function setMobileMapLayer(name) {
+  [esriImagery, osm, esriLabels].forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
+  if (name === 'road') map.addLayer(osm);
+  else {
+    map.addLayer(esriImagery);
+    if (name === 'hybrid') map.addLayer(esriLabels);
+  }
+  document.querySelectorAll('[data-map-layer]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mapLayer === name)));
+  closeMapLayerSheet();
+}
+document.querySelectorAll('[data-map-layer]').forEach(button => button.addEventListener('click', () => setMobileMapLayer(button.dataset.mapLayer)));
+if ($('mapBoundaryUndo')) $('mapBoundaryUndo').addEventListener('click', undoMobileBoundaryPoint);
+if ($('mapBoundaryCancel')) $('mapBoundaryCancel').addEventListener('click', () => { stopMobileBoundary(); setStatus('ยกเลิกการวาดขอบเขตแล้ว'); });
+function setMobileView(view) {
+  if (!['map', 'tools', 'report'].includes(view)) return;
+  document.body.dataset.mobileView = view;
+  document.querySelectorAll('[data-mobile-view]').forEach(button => {
+    if (button.dataset.mobileView === view) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  });
+  closeMapActionMenu();
+  if (mobileBoundaryMode && view !== 'map') stopMobileBoundary();
+  if (view === 'map') setTimeout(() => map.invalidateSize({ animate: false }), 80);
+  if (view === 'tools') setTimeout(() => $('sidebarContent').scrollTo({ top: 0 }), 0);
+}
+if ($('mapHomeShortcut')) $('mapHomeShortcut').addEventListener('click', () => setMobileView('map'));
+if ($('mapToolsShortcut')) $('mapToolsShortcut').addEventListener('click', () => setMobileView('tools'));
+if ($('mapReportShortcut')) $('mapReportShortcut').addEventListener('click', () => setMobileView('report'));
+if (usesMobileMapUI()) setMobileView('map');
+map.on('move', updateMobileMeasurePreview);
+map.on('zoomend', updateMobileMeasurePreview);
 document.addEventListener('click', event => {
   if (mapActionMenu && !event.target.closest('.map-action-area') && !mapActionMenu.hidden) closeMapActionMenu();
 });

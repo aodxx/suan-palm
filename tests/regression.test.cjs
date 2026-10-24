@@ -57,7 +57,7 @@ test('all referenced 3D SVG icons exist and have an SVG viewBox', () => {
   }
 });
 
-test('responsive layout puts the map before a scrollable tool column on phones', () => {
+test('responsive mobile shell is full-screen and has separate tools/report views', () => {
   assert.match(html, /aria-live="polite"/);
   assert.match(css, /max-width: 720px/);
   assert.match(css, /:focus-visible/);
@@ -68,6 +68,13 @@ test('responsive layout puts the map before a scrollable tool column on phones',
   assert.match(css, /html, body\s*\{\s*height:\s*auto;[^}]*overflow-y:\s*auto/);
   assert.match(css, /#sidebarContent\s*\{\s*overflow-y:\s*auto/);
   assert.match(css, /\.mobile-action-dock\s*\{\s*display:\s*none\s*!important/);
+  assert.match(css, /#map\s*\{\s*position:\s*fixed;\s*z-index:\s*0;\s*inset:\s*0;[^}]*height:\s*100dvh/);
+  assert.match(css, /body\[data-mobile-view="tools"\] #sidebar/);
+  assert.match(css, /body\[data-mobile-view="report"\] #sidebar/);
+  assert.match(css, /body\[data-mobile-view="tools"\] #panel-report/);
+  assert.doesNotMatch(css, /body\[data-mobile-view="tools"\] #panel-more/);
+  assert.match(css, /body\[data-mobile-view="report"\] #panel-more/);
+  assert.match(css, /body\[data-mobile-view="report"\] \.primary-action/);
 });
 
 test('existing boundary, grid, export, and persistence handlers remain connected', () => {
@@ -115,15 +122,28 @@ test('CSS keeps shared icon sizing and no sidebar sheet/dock in one-page mobile 
   assert.match(css, /\.sheet-toggle\s*\{\s*display:\s*none\s*!important/);
 });
 
-test('mobile map-first actions remain visible and invoke existing planner controls', () => {
-  for (const id of ['mapAreaSummary', 'mapTreeSummary', 'mapLocateAction', 'mapLayersAction', 'mapPrimaryAction', 'mapActionMenu', 'mapDrawAction', 'mapPlantAction', 'mapPlotPinAction', 'mapToolsShortcut', 'mapReportShortcut']) {
+test('map workflow supports crosshair boundary placement and separate app destinations', () => {
+  for (const id of ['mapAreaSummary', 'mapTreeSummary', 'mapPerimeterSummary', 'mapPerimeterLabel', 'mapCrosshair', 'mapMeasureBadge', 'mapLocateAction', 'mapLayersAction', 'mapLayerSheet', 'mapLayerScrim', 'mapLayerClose', 'mapPrimaryAction', 'mapActionMenu', 'mapDrawAction', 'mapMeasureAction', 'mapPlantAction', 'mapPlotPinAction', 'mapBoundaryUndo', 'mapBoundaryCancel', 'mapToolsShortcut', 'mapReportShortcut']) {
     assert.match(html, new RegExp(`id="${id}"`), `missing map control #${id}`);
   }
-  assert.match(css, /#map\s*\{\s*flex-basis:\s*72dvh;\s*height:\s*72dvh/);
+  assert.match(css, /\.map-ui\.is-drawing \.map-crosshair\s*\{\s*display:\s*block/);
+  assert.match(css, /\.map-ui\.is-drawing \.map-primary-action\[data-can-finish="true"\]/);
+  assert.match(css, /\.map-layer-sheet\s*\{\s*position:\s*fixed/);
   assert.match(css, /\.map-primary-action\s*\{[^}]*background:\s*#f28c28/);
+  assert.deepEqual([...html.matchAll(/data-map-layer="([^"]+)"/g)].map(match => match[1]), ['satellite', 'road', 'hybrid']);
   const app = read('js/app.js');
-  for (const selector of ['.leaflet-draw-draw-polygon', '.leaflet-control-layers-toggle']) assert.ok(app.includes(selector));
-  for (const id of ['btnGenerate', 'btnPickPlot', 'btnLocate', 'panel-settings', 'panel-report']) assert.ok(app.includes(`$('${id}')`));
+  for (const fn of ['startMobileBoundary', 'addMobileBoundaryPoint', 'undoMobileBoundaryPoint', 'finishMobileBoundary', 'setMobileView']) assert.match(app, new RegExp(`function ${fn}\\(`));
+  assert.match(app, /map\.getCenter\(\)/);
+  assert.match(app, /map\.distance\(mobileBoundaryPoints\.at\(-1\), center\)/);
+  assert.match(app, /function setMobileMapLayer\(/);
+  assert.match(app, /mobileBoundaryDistanceMarkers = mobileBoundaryPoints\.slice\(1\)/);
+  assert.match(app, /startMobileBoundary\('measure'\)/);
+  assert.match(app, /แนววัดนี้ไม่เปลี่ยนขอบเขตแปลง/);
+  assert.match(app, /map\.fire\(L\.Draw\.Event\.CREATED/);
+  assert.match(app, /document\.body\.dataset\.mobileView = view/);
+  for (const id of ['btnGenerate', 'btnPickPlot', 'btnLocate']) assert.ok(app.includes(`$('${id}')`));
   assert.match(app, /function updateMapSummary\(/);
+  assert.match(app, /function formatMapArea\(/);
+  assert.match(app, /formatMapArea\(currentAreaM2\)/);
   assert.match(app, /area\.textContent = currentFeature/);
 });

@@ -65,7 +65,7 @@
         </section>
 
         <section class="category-panel" id="panel-draw" aria-label="วาดและแก้ไขขอบเขต">
-          <div class="card"><h2><img class="inline-icon" src="assets/icons/ui-3d/draw.svg" alt="" aria-hidden="true"> วาดและแก้ไขขอบเขต</h2><p class="panel-help">ใช้เครื่องมือบนแผนที่เพื่อวาด แก้ไข หรือลบขอบเขตแปลง การแก้ไขหรือลบขอบเขตจะล้างจุดปลูกเดิมเพื่อป้องกันข้อมูลไม่ตรงกัน</p><div class="tool-tip">เครื่องมือวาดอยู่บริเวณมุมซ้ายบนของแผนที่</div></div>
+          <div class="card"><h2><img class="inline-icon" src="assets/icons/ui-3d/draw.svg" alt="" aria-hidden="true"> วาดและแก้ไขขอบเขต</h2><p class="panel-help">บนมือถือ กด + แล้วเลือกวาดขอบเขต เลื่อนแผนที่ให้กากบาทตรงมุมแปลงแล้วกด + เพื่อปักจุด เมื่อครบอย่างน้อย 3 จุด กด ✓ เพื่อปิดและบันทึกแนวเขต การแก้ไขหรือลบขอบเขตจะล้างจุดปลูกเดิมเพื่อป้องกันข้อมูลไม่ตรงกัน</p><div class="tool-tip">ระยะของช่วงล่าสุดจะแสดงระหว่างวาด และกด “ย้อนจุด” เพื่อแก้ตำแหน่งที่ปักพลาดได้</div></div>
         </section>
 
         <section class="category-panel" id="panel-plant" aria-label="สรุปและแก้ไขจุดปลูก">
@@ -102,30 +102,48 @@
     </div>
   </aside>
   <div id="map" role="application" aria-label="แผนที่สำหรับวาดขอบเขตและจัดการจุดปลูก"></div>
-  <section class="map-ui" aria-label="เครื่องมือด่วนบนแผนที่">
+  <section id="mapUI" class="map-ui" aria-label="เครื่องมือด่วนบนแผนที่">
     <div class="map-summary" aria-live="polite">
       <div><span>พื้นที่แปลง</span><strong id="mapAreaSummary">– ไร่</strong></div>
       <i aria-hidden="true"></i>
       <div><span>จุดปลูก</span><strong id="mapTreeSummary">ยังไม่สร้าง</strong></div>
+      <i aria-hidden="true"></i>
+      <div><span id="mapPerimeterLabel">แนวเขต</span><strong id="mapPerimeterSummary">– ม.</strong></div>
     </div>
+    <div id="mapCrosshair" class="map-crosshair" aria-hidden="true"><span></span></div>
+    <div id="mapMeasureBadge" class="map-measure-badge" aria-live="polite" hidden>
+      <strong id="mapSegmentDistance">ช่วงล่าสุด 0 ม.</strong><span id="mapBoundaryHint">เลื่อนแผนที่แล้วแตะ + เพื่อปักจุด</span>
+    </div>
+    <div class="map-boundary-tools"><button id="mapBoundaryCancel" type="button">× ยกเลิก</button><button id="mapBoundaryUndo" type="button" aria-label="ย้อนจุดขอบเขตล่าสุด" hidden>↶ ย้อนจุด</button></div>
     <div class="map-quick-actions" aria-label="เครื่องมือแผนที่">
       <button id="mapLocateAction" class="map-round-action" type="button" aria-label="ใช้ตำแหน่งของฉัน" title="ใช้ตำแหน่งของฉัน">⌖</button>
-      <button id="mapLayersAction" class="map-round-action" type="button" aria-label="เปลี่ยนชั้นแผนที่" title="เปลี่ยนชั้นแผนที่">▱</button>
+      <button id="mapLayersAction" class="map-round-action" type="button" aria-label="เปลี่ยนชั้นแผนที่" aria-expanded="false" aria-controls="mapLayerSheet" title="เปลี่ยนชั้นแผนที่">▱</button>
     </div>
     <div class="map-action-area">
       <div id="mapActionMenu" class="map-action-menu" hidden>
-        <button id="mapDrawAction" type="button"><span class="menu-action-icon">⬡</span><span><b>วาดขอบเขตแปลง</b><small>แตะจุดบนแผนที่เพื่อกำหนดแนวเขต</small></span></button>
+        <button id="mapDrawAction" type="button"><span class="menu-action-icon">⬡</span><span><b>วาดขอบเขตแปลง</b><small>เลื่อนแผนที่ให้กากบาทตรงจุด แล้วกด +</small></span></button>
+        <button id="mapMeasureAction" type="button"><span class="menu-action-icon">↗</span><span><b>วัดระยะ</b><small>ปักจุดตามแนวที่ต้องการวัด แล้วกด ✓</small></span></button>
         <button id="mapPlantAction" type="button"><span class="menu-action-icon">✳</span><span><b>สร้างจุดปลูก</b><small>คำนวณตำแหน่งตามระยะและแนวแถว</small></span></button>
         <button id="mapPlotPinAction" type="button"><span class="menu-action-icon">⌖</span><span><b>ปักจุดกึ่งกลางแปลง</b><small>เลือกตำแหน่งบนแผนที่</small></span></button>
       </div>
       <button id="mapPrimaryAction" class="map-primary-action" type="button" aria-expanded="false" aria-controls="mapActionMenu" aria-label="เปิดคำสั่งแผนที่">+</button>
     </div>
-    <nav class="map-bottom-nav" aria-label="ทางลัด">
-      <button id="mapHomeShortcut" type="button"><span>⌂</span><small>แผนที่</small></button>
-      <button id="mapToolsShortcut" type="button"><span>☷</span><small>เครื่องมือ</small></button>
-      <button id="mapReportShortcut" type="button"><span>▤</span><small>รายงาน</small></button>
-    </nav>
+    <div id="mapLayerScrim" class="map-layer-scrim" hidden></div>
+    <section id="mapLayerSheet" class="map-layer-sheet" role="dialog" aria-modal="true" aria-labelledby="mapLayerTitle" hidden>
+      <div class="layer-sheet-grip"></div>
+      <header><div><h2 id="mapLayerTitle">ชั้นแผนที่</h2><p>เลือกรูปแบบแผนที่ให้เหมาะกับการสำรวจแปลง</p></div><button id="mapLayerClose" type="button" aria-label="ปิดชั้นแผนที่">×</button></header>
+      <div class="layer-options">
+        <button type="button" data-map-layer="satellite" aria-pressed="true"><span class="layer-preview satellite-preview">▧</span><b>ดาวเทียม</b><small>ภาพพื้นที่จริง</small></button>
+        <button type="button" data-map-layer="road" aria-pressed="false"><span class="layer-preview road-preview">⌁</span><b>ถนน</b><small>ชื่อถนนและชุมชน</small></button>
+        <button type="button" data-map-layer="hybrid" aria-pressed="false"><span class="layer-preview hybrid-preview">▧</span><b>ดาวเทียม + ป้าย</b><small>ภาพและชื่อสถานที่</small></button>
+      </div>
+    </section>
   </section>
+  <nav class="map-bottom-nav" aria-label="หน้าหลัก">
+    <button id="mapHomeShortcut" type="button" data-mobile-view="map" aria-current="page"><span>⌖</span><small>แผนที่</small></button>
+    <button id="mapToolsShortcut" type="button" data-mobile-view="tools"><span>☷</span><small>เครื่องมือ</small></button>
+    <button id="mapReportShortcut" type="button" data-mobile-view="report"><span>▤</span><small>รายงาน</small></button>
+  </nav>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
