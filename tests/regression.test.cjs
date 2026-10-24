@@ -114,3 +114,16 @@ test('CSS keeps shared icon sizing and no sidebar sheet/dock in one-page mobile 
   assert.match(css, /\.inline-icon\s*\{[^}]*width:\s*23px/);
   assert.match(css, /\.sheet-toggle\s*\{\s*display:\s*none\s*!important/);
 });
+
+test('mobile map-first actions remain visible and invoke existing planner controls', () => {
+  for (const id of ['mapAreaSummary', 'mapTreeSummary', 'mapLocateAction', 'mapLayersAction', 'mapPrimaryAction', 'mapActionMenu', 'mapDrawAction', 'mapPlantAction', 'mapPlotPinAction', 'mapToolsShortcut', 'mapReportShortcut']) {
+    assert.match(html, new RegExp(`id="${id}"`), `missing map control #${id}`);
+  }
+  assert.match(css, /#map\s*\{\s*flex-basis:\s*72dvh;\s*height:\s*72dvh/);
+  assert.match(css, /\.map-primary-action\s*\{[^}]*background:\s*#f28c28/);
+  const app = read('js/app.js');
+  for (const selector of ['.leaflet-draw-draw-polygon', '.leaflet-control-layers-toggle']) assert.ok(app.includes(selector));
+  for (const id of ['btnGenerate', 'btnPickPlot', 'btnLocate', 'panel-settings', 'panel-report']) assert.ok(app.includes(`$('${id}')`));
+  assert.match(app, /function updateMapSummary\(/);
+  assert.match(app, /area\.textContent = currentFeature/);
+});

@@ -102,6 +102,30 @@
     </div>
   </aside>
   <div id="map" role="application" aria-label="แผนที่สำหรับวาดขอบเขตและจัดการจุดปลูก"></div>
+  <section class="map-ui" aria-label="เครื่องมือด่วนบนแผนที่">
+    <div class="map-summary" aria-live="polite">
+      <div><span>พื้นที่แปลง</span><strong id="mapAreaSummary">– ไร่</strong></div>
+      <i aria-hidden="true"></i>
+      <div><span>จุดปลูก</span><strong id="mapTreeSummary">ยังไม่สร้าง</strong></div>
+    </div>
+    <div class="map-quick-actions" aria-label="เครื่องมือแผนที่">
+      <button id="mapLocateAction" class="map-round-action" type="button" aria-label="ใช้ตำแหน่งของฉัน" title="ใช้ตำแหน่งของฉัน">⌖</button>
+      <button id="mapLayersAction" class="map-round-action" type="button" aria-label="เปลี่ยนชั้นแผนที่" title="เปลี่ยนชั้นแผนที่">▱</button>
+    </div>
+    <div class="map-action-area">
+      <div id="mapActionMenu" class="map-action-menu" hidden>
+        <button id="mapDrawAction" type="button"><span class="menu-action-icon">⬡</span><span><b>วาดขอบเขตแปลง</b><small>แตะจุดบนแผนที่เพื่อกำหนดแนวเขต</small></span></button>
+        <button id="mapPlantAction" type="button"><span class="menu-action-icon">✳</span><span><b>สร้างจุดปลูก</b><small>คำนวณตำแหน่งตามระยะและแนวแถว</small></span></button>
+        <button id="mapPlotPinAction" type="button"><span class="menu-action-icon">⌖</span><span><b>ปักจุดกึ่งกลางแปลง</b><small>เลือกตำแหน่งบนแผนที่</small></span></button>
+      </div>
+      <button id="mapPrimaryAction" class="map-primary-action" type="button" aria-expanded="false" aria-controls="mapActionMenu" aria-label="เปิดคำสั่งแผนที่">+</button>
+    </div>
+    <nav class="map-bottom-nav" aria-label="ทางลัด">
+      <button id="mapHomeShortcut" type="button"><span>⌂</span><small>แผนที่</small></button>
+      <button id="mapToolsShortcut" type="button"><span>☷</span><small>เครื่องมือ</small></button>
+      <button id="mapReportShortcut" type="button"><span>▤</span><small>รายงาน</small></button>
+    </nav>
+  </section>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>

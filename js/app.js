@@ -151,6 +151,17 @@ function updateWorkflow() {
   }
 }
 
+function updateMapSummary() {
+  const area = $('mapAreaSummary');
+  const count = $('mapTreeSummary');
+  if (area) {
+    const rai = $('areaRai')?.textContent || '–';
+    const ngan = $('areaNgan')?.textContent || '–';
+    area.textContent = currentFeature ? `${rai} ไร่ ${ngan} งาน` : '– ไร่';
+  }
+  if (count) count.textContent = trees.length ? trees.length.toLocaleString('th-TH') + ' ต้น' : 'ยังไม่สร้าง';
+}
+
 function getSeedlingPrice() {
   const input = $('seedlingPrice');
   const value = input ? parseFloat(input.value) : NaN;
@@ -580,6 +591,7 @@ function updateCount() {
   $('btnUndo').title = removed.length ? 'คืนค่าจุดปลูกที่ลบล่าสุด' : 'ลบจุดปลูกก่อนจึงจะเลิกทำได้';
   updateSeedlingCost();
   updateWorkflow();
+  updateMapSummary();
 }
 
 function updateArea() {
@@ -589,6 +601,7 @@ function updateArea() {
     ['areaM2', 'areaRai', 'areaNgan', 'areaWa', 'treeEst'].forEach(id => $(id).textContent = '–');
     $('btnGenerate').disabled = true;
     updateWorkflow();
+    updateMapSummary();
     return;
   }
   currentFeature = layers[0].toGeoJSON();
@@ -601,6 +614,7 @@ function updateArea() {
   $('treeEst').textContent  = Math.floor(currentAreaM2 / getSpacingMetrics().areaPerTree).toLocaleString('th-TH') + ' ต้น';
   $('btnGenerate').disabled = false;
   updateWorkflow();
+  updateMapSummary();
 }
 
 function clearGrid() {
@@ -829,6 +843,42 @@ if ($('mobilePrimaryAction')) $('mobilePrimaryAction').addEventListener('click',
     setSheetCollapsed(false);
     $('mobileToolsToggle')?.setAttribute('aria-expanded', 'true');
   }
+});
+const mapActionMenu = $('mapActionMenu');
+const mapPrimaryAction = $('mapPrimaryAction');
+function closeMapActionMenu() {
+  if (!mapActionMenu || !mapPrimaryAction) return;
+  mapActionMenu.hidden = true;
+  mapPrimaryAction.setAttribute('aria-expanded', 'false');
+}
+if (mapPrimaryAction) mapPrimaryAction.addEventListener('click', () => {
+  const open = mapPrimaryAction.getAttribute('aria-expanded') !== 'true';
+  mapActionMenu.hidden = !open;
+  mapPrimaryAction.setAttribute('aria-expanded', String(open));
+});
+if ($('mapDrawAction')) $('mapDrawAction').addEventListener('click', () => {
+  closeMapActionMenu();
+  document.querySelector('.leaflet-draw-draw-polygon')?.click();
+});
+if ($('mapPlantAction')) $('mapPlantAction').addEventListener('click', () => {
+  closeMapActionMenu();
+  if ($('btnGenerate').disabled) {
+    setStatus('วาดขอบเขตแปลงก่อน แล้วจึงสร้างจุดปลูกได้', 'warn');
+    return;
+  }
+  $('btnGenerate').click();
+});
+if ($('mapPlotPinAction')) $('mapPlotPinAction').addEventListener('click', () => {
+  closeMapActionMenu();
+  $('btnPickPlot').click();
+});
+if ($('mapLocateAction')) $('mapLocateAction').addEventListener('click', () => $('btnLocate').click());
+if ($('mapLayersAction')) $('mapLayersAction').addEventListener('click', () => document.querySelector('.leaflet-control-layers-toggle')?.click());
+if ($('mapHomeShortcut')) $('mapHomeShortcut').addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+if ($('mapToolsShortcut')) $('mapToolsShortcut').addEventListener('click', () => $('panel-settings').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+if ($('mapReportShortcut')) $('mapReportShortcut').addEventListener('click', () => $('panel-report').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+document.addEventListener('click', event => {
+  if (mapActionMenu && !event.target.closest('.map-action-area') && !mapActionMenu.hidden) closeMapActionMenu();
 });
 if (window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-width: 900px)').matches) {
   try {
