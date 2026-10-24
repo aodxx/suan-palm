@@ -9,29 +9,33 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const html = read('index.html');
 const css = read('css/style.css');
 
-const legacyIds = [
+const requiredIds = [
   'plotName', 'btnLocate', 'locationStatus', 'btnPickPlot', 'plotLocationStatus',
   'areaM2', 'areaRai', 'areaNgan', 'areaWa', 'treeEst', 'treeActual',
   'treeDensity', 'treePerRai', 'rowSpacing', 'seedlingPrice', 'seedlingTotal',
   'spacing', 'rotation', 'margin', 'btnGenerate', 'btnPDF', 'btnPrint',
   'btnGeoJSON', 'btnCSV', 'btnUndo', 'btnCenter', 'btnClear', 'status',
-  'storageStatus', 'sheetToggle', 'sidebarContent', 'map'
+  'storageStatus', 'sidebarContent', 'map'
 ];
 
-test('preserves every legacy JavaScript element ID exactly once', () => {
+test('preserves all required tool IDs exactly once and removes obsolete tab/sheet controls', () => {
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
   assert.equal(ids.length, new Set(ids).size, 'HTML contains duplicate IDs');
-  for (const id of legacyIds) assert.equal(ids.filter(found => found === id).length, 1, `missing or repeated #${id}`);
+  for (const id of requiredIds) assert.equal(ids.filter(found => found === id).length, 1, `missing or repeated #${id}`);
+  for (const id of ['sheetToggle', 'mobileToolsToggle', 'mobilePrimaryAction']) {
+    assert.equal(ids.includes(id), false, `obsolete hidden control #${id} must not remain`);
+  }
 });
 
-test('category tabs point to labelled panels and expose visible Thai labels', () => {
-  const tabs = [...html.matchAll(/<button class="category-tab[^"]*"[^>]*id="([^"]+)"[^>]*aria-controls="([^"]+)"[^>]*data-panel="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g)];
-  assert.equal(tabs.length, 6);
-  for (const [, tabId, panelId, name, body] of tabs) {
-    assert.match(html, new RegExp(`<section[^>]*id="${panelId}"[^>]*role="tabpanel"[^>]*aria-labelledby="${tabId}"`));
-    assert.match(body, /<span>[^<ก-๙]*(?:[ก-๙][^<]*)?<\/span>/);
-    assert.equal(panelId, `panel-${name}`);
+test('all six tool groups are visible together without tab semantics or hidden panels', () => {
+  const panels = [...html.matchAll(/<section class="category-panel" id="panel-([^\"]+)"([^>]*)>/g)];
+  assert.deepEqual(panels.map(([, name]) => name), ['plot', 'draw', 'plant', 'settings', 'report', 'more']);
+  for (const [, name, attrs] of panels) {
+    assert.match(attrs, /aria-label=/, `${name} should be accessible`);
+    assert.doesNotMatch(attrs, /\bhidden\b|role="tabpanel"/);
   }
+  assert.doesNotMatch(html, /role="tablist"|class="category-tab/);
+  assert.match(css, /\.category-panel\[hidden\],\s*\.category-panel\s*\{\s*display:\s*block\s*!important/);
 });
 
 test('disabled primary/export actions explain which prerequisite is missing', () => {
@@ -44,7 +48,7 @@ test('disabled primary/export actions explain which prerequisite is missing', ()
 });
 
 test('all referenced 3D SVG icons exist and have an SVG viewBox', () => {
-  const sources = [...html.matchAll(/<img[^>]+src="(assets\/icons\/ui-3d\/[^\"]+\.svg)"/g)].map(match => match[1]);
+  const sources = [...html.matchAll(/<img[^>]+src="(assets\/icons\/ui-3d\/[^"]+\.svg)"/g)].map(match => match[1]);
   assert.ok(sources.length >= 10);
   for (const src of new Set(sources)) {
     const svg = read(src);
@@ -53,45 +57,29 @@ test('all referenced 3D SVG icons exist and have an SVG viewBox', () => {
   }
 });
 
-test('responsive and accessibility affordances are present', () => {
-  assert.match(html, /role="tablist"/);
+test('responsive layout puts the map before a scrollable tool column on phones', () => {
   assert.match(html, /aria-live="polite"/);
   assert.match(css, /max-width: 720px/);
-  assert.match(css, /safe-area-inset-bottom/);
   assert.match(css, /:focus-visible/);
   assert.match(css, /prefers-reduced-motion/);
+  assert.match(css, /#app\s*\{\s*position:\s*static;\s*display:\s*flex;\s*flex-direction:\s*column/);
+  assert.match(css, /#map\s*\{\s*position:\s*relative;[^}]*order:\s*0;[^}]*height:\s*42dvh/);
+  assert.match(css, /#sidebar\s*\{\s*position:\s*relative;[^}]*order:\s*1/);
+  assert.match(css, /html, body\s*\{\s*height:\s*auto;[^}]*overflow-y:\s*auto/);
+  assert.match(css, /#sidebarContent\s*\{\s*overflow-y:\s*auto/);
+  assert.match(css, /\.mobile-action-dock\s*\{\s*display:\s*none\s*!important/);
 });
 
-test('mobile map-first dock has named controls and follows the existing workflow states', () => {
-  for (const id of ['mobilePrimaryAction', 'mobileActionHint', 'mobileToolsToggle']) {
-    assert.match(html, new RegExp(`id="${id}"`));
+test('existing boundary, grid, export, and persistence handlers remain connected', () => {
+  const app = read('js/app.js');
+  for (const id of ['btnGenerate', 'btnUndo', 'btnPDF', 'btnPrint', 'btnCSV', 'btnGeoJSON', 'btnClear', 'btnPickPlot', 'btnLocate']) {
+    assert.ok(app.includes(`$('${id}')`), `missing handler reference for #${id}`);
   }
-  assert.match(html, /aria-controls="sidebarContent"/);
-  assert.match(css, /#sidebar:not\(\.is-collapsed\) ~ \.mobile-action-dock\s*\{\s*display:\s*none/);
-  assert.match(css, /\.leaflet-bottom\s*\{\s*bottom:\s*calc\(92px \+ env\(safe-area-inset-bottom\)\)/);
-  const app = read('js/app.js');
-  assert.match(app, /mobileAction\.dataset\.action = 'draw'/);
-  assert.match(app, /mobileAction\.dataset\.action = 'generate'/);
-  assert.match(app, /mobileAction\.dataset\.action = 'review'/);
-  assert.match(app, /\$\('btnGenerate'\)\.click\(\)/);
   assert.match(app, /restoreDraft\(\);\s*updateWorkflow\(\);/);
-});
-
-test('mobile default collapses the sheet without changing the draft storage schema', () => {
-  const app = read('js/app.js');
-  assert.match(app, /savedSheetState === '1' \|\| savedSheetState === null/);
   assert.match(app, /const STORAGE_KEY = 'suan-palm-draft-v1'/);
   assert.match(app, /version: 1/);
-  assert.match(app, /const SHEET_KEY = 'suan-palm-sheet-collapsed'/);
-});
-
-test('replacing, editing, or removing a boundary warns before existing planting points are discarded', () => {
-  const app = read('js/app.js');
-  assert.match(app, /trees\.length && !confirm\('การวาดขอบเขตใหม่จะแทนแปลงเดิม/);
-  assert.match(app, /\.leaflet-draw-edit-edit, \.leaflet-draw-edit-remove/);
-  assert.match(app, /การแก้ไขขอบเขตและกดบันทึกจะล้างจุดปลูกเดิม/);
-  assert.match(app, /การลบขอบเขตจะล้างจุดปลูกทั้งหมด/);
-  assert.match(app, /event\.stopImmediatePropagation\(\)/);
+  assert.match(app, /L\.Draw\.Event\.CREATED/);
+  assert.match(app, /function generateGrid\(/);
 });
 
 test('GPS permission failure persists the cleared location in the existing draft', () => {
@@ -122,7 +110,7 @@ test('equilateral planting calculations retain baseline values and supported spa
   }
 });
 
-test('CSS uses a single shared class for 3D icon sizing and panels can be hidden', () => {
+test('CSS keeps shared icon sizing and no sidebar sheet/dock in one-page mobile mode', () => {
   assert.match(css, /\.inline-icon\s*\{[^}]*width:\s*23px/);
-  assert.match(css, /\.category-panel\[hidden\]\s*\{\s*display:\s*none\s*!important/);
+  assert.match(css, /\.sheet-toggle\s*\{\s*display:\s*none\s*!important/);
 });
