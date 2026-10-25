@@ -205,3 +205,10 @@ test('map submenu actions connect drawing, measurement, planting and plot-center
   assert.match(app, /if \(\$\('mapPlantAction'\)\)[\s\S]*?\$\('btnGenerate'\)\.click\(\)/);
   assert.match(app, /if \(\$\('mapPlotPinAction'\)\)[\s\S]*?savePlotLocation\(map\.getCenter\(\)\)[\s\S]*?\$\('btnPickPlot'\)\.click\(\)/);
 });
+
+test('small portrait screens use labeled tap-friendly menu cards instead of floating tiny captions', () => {
+  assert.match(css, /@media \(max-width: 380px\) and \(orientation: portrait\)\s*\{[\s\S]*?#mapDrawAction, #mapMeasureAction, #mapPlantAction, #mapPlotPinAction\s*\{[^}]*width:\s*78px;[^}]*height:\s*68px;[^}]*min-height:\s*68px/);
+  assert.match(css, /@media \(max-width: 380px\) and \(orientation: portrait\)[\s\S]*?\.map-action-menu \.menu-action-icon\s*\{[^}]*top:\s*5px;[^}]*width:\s*28px;[^}]*height:\s*28px/);
+  assert.match(css, /@media \(max-width: 380px\) and \(orientation: portrait\)[\s\S]*?\.map-action-menu \.menu-action-label\s*\{[^}]*top:\s*auto;[^}]*bottom:\s*4px;[^}]*width:\s*calc\(100% - 8px\);[^}]*white-space:\s*normal/);
+  assert.match(css, /@media \(max-width: 380px\) and \(orientation: portrait\)[\s\S]*?#mapMeasureAction, #mapPlantAction\s*\{[^}]*--radial-y:\s*-164px/);
+});
