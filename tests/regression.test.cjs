@@ -147,3 +147,22 @@ test('map workflow supports crosshair boundary placement and separate app destin
   assert.match(app, /formatMapArea\(currentAreaM2\)/);
   assert.match(app, /area\.textContent = currentFeature/);
 });
+
+test('mobile map provides an explicit north-up indicator and user-initiated camera capture', () => {
+  assert.match(html, /class="map-compass"[^>]*aria-label="ทิศเหนืออยู่ด้านบนของแผนที่"/);
+  assert.match(html, /id="mapCameraAction"[^>]*aria-label="ถ่ายภาพและปักหมุดบนแผนที่"/);
+  assert.match(html, /id="mapCameraInput"[^>]*type="file"[^>]*accept="image\/\*"[^>]*capture="environment"/);
+  assert.match(css, /\.map-compass\s*\{[^}]*width:\s*48px;[^}]*height:\s*48px/);
+  assert.match(css, /\.map-quick-actions\s*\{[^}]*top:\s*calc\(144px/);
+  assert.match(css, /\.camera-photo-icon\s*\{[^}]*border-radius:\s*50%/);
+  assert.match(read('assets/icons/ui-3d/camera.svg'), /<svg\b[^>]*viewBox=/);
+  assert.match(read('assets/icons/ui-3d/north-arrow.svg'), /<svg\b[^>]*viewBox=/);
+  const app = read('js/app.js');
+  assert.match(app, /if \(\$\('mapCameraInput'\)\) \$\('mapCameraInput'\)\.addEventListener\('change'/);
+  assert.match(app, /URL\.createObjectURL\(file\)/);
+  assert.match(app, /marker\.bindPopup\(popup/);
+  assert.match(app, /ภาพอยู่ชั่วคราวในหน้านี้และไม่ถูกอัปโหลด/);
+  assert.match(app, /cameraPhotoMarkers\.length\) && !confirm/);
+  assert.match(app, /function clearCameraPhotoMarkers\(/);
+  assert.match(app, /URL\.revokeObjectURL\(imageUrl\)/);
+});

@@ -253,7 +253,10 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
   .map-summary { top: calc(12px + env(safe-area-inset-top)); right: 78px; min-height: 64px; gap: 8px; padding: 8px 10px; }
   .map-summary span { font-size: 10px; }
   .map-summary strong { font-size: 12px; }
-  .map-quick-actions { top: calc(88px + env(safe-area-inset-top)); }
+  .map-compass { position: absolute; top: calc(86px + env(safe-area-inset-top)); right: 14px; display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid #dce5de; border-radius: 15px; background: #fffffff2; box-shadow: 0 3px 12px #1020162c; }
+  .map-compass span { position: absolute; z-index: 1; top: 1px; color: #ad3426; font-size: 9px; font-weight: 800; line-height: 1; }
+  .map-compass img { width: 34px; height: 34px; margin-top: 5px; }
+  .map-quick-actions { top: calc(144px + env(safe-area-inset-top)); }
   .map-action-area { bottom: calc(90px + env(safe-area-inset-bottom)); }
   .map-bottom-nav { position: fixed; z-index: 2000; right: 0; bottom: 0; left: 0; min-height: 64px; padding: 5px 12px calc(5px + env(safe-area-inset-bottom)); }
   .leaflet-bottom { bottom: calc(64px + env(safe-area-inset-bottom)) !important; }
@@ -314,4 +317,16 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
   .layer-options b { color: #26392b; font-size: 11px; line-height: 1.25; }
   .layer-options small { margin-top: 2px; color: #69756c; font-size: 9px; line-height: 1.2; }
   .boundary-distance-icon { display: grid; place-items: center; width: 68px !important; height: 25px !important; border: 1px solid #fff; border-radius: 8px; padding: 2px 4px; background: #153a28ef; color: #fff; box-shadow: 0 2px 7px #0005; font-family: system-ui,sans-serif; font-size: 10px; font-weight: 700; white-space: nowrap; }
+  .map-round-action img { display: block; width: 23px; height: 23px; object-fit: contain; }
+  .camera-photo-icon { display: grid; place-items: center; width: 42px !important; height: 42px !important; border: 2px solid #fff; border-radius: 50%; background: #ef8d27; box-shadow: 0 2px 8px #10201666; }
+  .camera-photo-icon img { display: block; width: 22px; height: 22px; filter: brightness(0) invert(1); }
+  .camera-photo-popup { max-width: min(250px, 64vw); }
+  .camera-photo-popup img { display: block; width: min(240px, 64vw); max-height: 240px; border-radius: 8px; object-fit: cover; }
+  .camera-photo-popup p { margin: 6px 0 0; color: #536259; font-size: 11px; line-height: 1.4; }
+}
+@media (orientation: landscape) and (max-width: 900px) {
+  .map-compass { top: calc(10px + env(safe-area-inset-top)); right: 12px; }
+  .map-quick-actions { top: calc(68px + env(safe-area-inset-top)); right: 12px; flex-direction: row; gap: 6px; }
+  .map-round-action { width: 48px; height: 48px; min-height: 48px; border-radius: 15px; }
+  .map-action-area { bottom: calc(74px + env(safe-area-inset-bottom)); }
 }
