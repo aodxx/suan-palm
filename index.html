@@ -145,6 +145,18 @@
       </div>
     </section>
   </section>
+  <section id="mapFlow" class="map-flow" data-stage="draw" aria-label="ขั้นตอนถัดไป" aria-live="polite">
+    <ol class="flow-steps" aria-label="ความคืบหน้างานหลัก">
+      <li data-flow-step="draw"><b>1</b><span>วาดแปลง</span></li>
+      <li data-flow-step="area"><b>2</b><span>ดูพื้นที่</span></li>
+      <li data-flow-step="plant"><b>3</b><span>จุดปลูก</span></li>
+      <li data-flow-step="check"><b>4</b><span>ตรวจจำนวน</span></li>
+    </ol>
+    <div class="flow-body">
+      <div class="flow-text"><strong id="mapFlowTitle">เริ่มจากวาดขอบเขตแปลง</strong><span id="mapFlowDetail">ปักมุมแปลงบนแผนที่ ระบบจะคำนวณพื้นที่ให้ทันที</span></div>
+      <div class="flow-actions"><button id="mapFlowCta" class="flow-cta" type="button">วาดขอบเขตแปลง</button><button id="mapFlowSecondary" class="flow-secondary" type="button" hidden>ตั้งค่าระยะปลูก</button></div>
+    </div>
+  </section>
   <nav class="map-bottom-nav" aria-label="หน้าหลัก">
     <button id="mapHomeShortcut" type="button" data-mobile-view="map" aria-current="page"><span>⌖</span><small>แผนที่</small></button>
     <button id="mapToolsShortcut" type="button" data-mobile-view="tools"><span>☷</span><small>เครื่องมือ</small></button>

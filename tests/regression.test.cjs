@@ -244,3 +244,23 @@ test('small portrait screens keep the four circular menu actions compact and acc
     assert.match(html, new RegExp(`id="${id}"[^>]*aria-label="[^"]+"`));
   }
 });
+
+test('guided main flow card connects draw -> area -> plant -> check with one next action', () => {
+  const app = read('js/app.js');
+  for (const id of ['mapFlow', 'mapFlowTitle', 'mapFlowDetail', 'mapFlowCta', 'mapFlowSecondary']) {
+    assert.match(html, new RegExp(`id="${id}"`), `missing #${id}`);
+  }
+  assert.deepEqual([...html.matchAll(/data-flow-step="([^"]+)"/g)].map(match => match[1]), ['draw', 'area', 'plant', 'check']);
+  for (const fn of ['updateMapFlow', 'startBoundaryDraw', 'fitToPlot', 'goToNextBadTree', 'goToReport', 'goToPlotName']) {
+    assert.match(app, new RegExp(`function ${fn}\\(`));
+  }
+  for (const action of ["'draw'", "'finish-draw'", "'generate'", "'bad'", "'name'", "'report'"]) assert.ok(app.includes(`case ${action}:`), `flow action ${action}`);
+  // after generating on mobile the user is returned to the map and the plot is framed
+  assert.match(app, /document\.body\.dataset\.mobileView !== 'map'\) setMobileView\('map'\)/);
+  assert.match(app, /map\.fitBounds\(layers\[0\]\.getBounds\(\)/);
+  // plant shortcut without a boundary starts drawing instead of a dead-end warning
+  assert.match(app, /startBoundaryDraw\(\);\s*return;/);
+  assert.match(css, /\.map-flow\s*\{/);
+  assert.match(css, /body\[data-mobile-view="tools"\] \.map-flow/);
+  assert.match(css, /\.map-flow\.flow-pop\s*\{\s*animation: none/);
+});
