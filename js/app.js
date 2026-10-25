@@ -73,7 +73,7 @@ L.drawLocal.edit.toolbar.buttons = {
 
 map.addControl(new L.Control.Draw({
   draw: {
-    polygon: { allowIntersection: false, showArea: false, shapeOptions: PLOT_BOUNDARY_STYLE },
+    polygon: { allowIntersection: true, showArea: false, shapeOptions: PLOT_BOUNDARY_STYLE },
     polyline: false, rectangle: false, circle: false, marker: false, circlemarker: false
   },
   edit: { featureGroup: drawnItems }
@@ -507,8 +507,8 @@ function renderMobileBoundaryPoints() {
   const boundaryHint = $('mapBoundaryHint');
   if (boundaryHint) {
     boundaryHint.textContent = canFinish
-      ? (mobileBoundaryKind === 'measure' ? 'กด + เพื่อเพิ่มจุด หรือ ✓ จบวัด' : 'กด + เพื่อเพิ่มมุม หรือ ✓ บันทึกแปลง')
-      : (mobileBoundaryKind === 'measure' ? 'เลื่อนแผนที่แล้วกด + เพื่อเพิ่มจุด (อย่างน้อย 2 จุด)' : 'เลื่อนแผนที่แล้วกด + เพื่อเพิ่มมุม (อย่างน้อย 3 จุด)');
+      ? (mobileBoundaryKind === 'measure' ? 'กด + เพื่อเพิ่มจุด หรือ ✓ จบวัด' : 'กด + เพื่อเพิ่มมุมได้ไม่จำกัด หรือ ✓ บันทึกแปลง')
+      : (mobileBoundaryKind === 'measure' ? 'เลื่อนแผนที่แล้วกด + เพื่อเพิ่มจุด (อย่างน้อย 2 จุด)' : 'เลื่อนแผนที่แล้วกด + เพื่อเพิ่มมุม (ปักได้ไม่จำกัด ครบ 3 มุมขึ้นไปจึงบันทึกได้)');
   }
   if (mapPrimaryAction && mobileBoundaryMode) {
     mapPrimaryAction.textContent = '+';
@@ -580,7 +580,7 @@ function addMobileBoundaryPoint() {
   }
   mobileBoundaryPoints.push(L.latLng(center.lat, center.lng));
   renderMobileBoundaryPoints();
-  setStatus('ปักจุดที่ ' + mobileBoundaryPoints.length + ' แล้ว · ' + (mobileBoundaryPoints.length < 3 ? 'เลื่อนแผนที่ไปยังมุมถัดไป' : 'ปักต่อหรือกด ✓ บันทึก'), 'ok');
+  setStatus('ปักจุดที่ ' + mobileBoundaryPoints.length + ' แล้ว · ' + (mobileBoundaryPoints.length < 3 ? 'เลื่อนแผนที่ไปยังมุมถัดไป' : 'ปักมุมเพิ่มได้ไม่จำกัด หรือกด ✓ บันทึก'), 'ok');
 }
 
 function undoMobileBoundaryPoint() {
@@ -603,7 +603,7 @@ function finishMobileBoundary() {
     return;
   }
   if (mobileBoundaryPoints.length < 3) {
-    setStatus('ต้องปักอย่างน้อย 3 จุดก่อนยืนยันขอบเขต', 'warn');
+    setStatus('ขอบเขตแปลงต้องมีอย่างน้อย 3 มุม (ปักเพิ่มได้ไม่จำกัด)', 'warn');
     return;
   }
   const coords = mobileBoundaryPoints.map(point => [point.lat, point.lng]);
@@ -1125,10 +1125,10 @@ function updateMapFlow() {
     title.textContent = 'วาดขอบเขต · ปักแล้ว ' + n + ' จุด';
     if (n < 3) {
       detail.textContent = 'เลื่อนแผนที่ให้กากบาทตรงมุมแปลง แล้วกด + ที่มุมถัดไป';
-      cta.textContent = 'ปักอีก ' + (3 - n) + ' จุดเพื่อบันทึก';
+      cta.textContent = n === 0 ? 'ปักมุมแรกที่กากบาท' : 'ปักมุมต่อไป (ครบอย่างน้อย 3 มุมจึงบันทึกได้)';
       cta.disabled = true;
     } else {
-      detail.textContent = 'ปักมุมเพิ่มได้ หรือกดบันทึกเพื่อดูพื้นที่ทันที';
+      detail.textContent = 'ปักมุมเพิ่มได้ไม่จำกัด ตามรูปร่างแปลงจริง หรือกดบันทึกเพื่อดูพื้นที่ทันที';
       cta.textContent = '✓ บันทึกขอบเขต';
     }
     action = 'finish-draw';
@@ -1460,7 +1460,10 @@ map.on(L.Draw.Event.CREATED, e => {
   saveDraft();
   fitToPlot();
   const areaText = m2ToThaiArea(currentAreaM2);
-  setStatus('พื้นที่ ' + areaText.rai + ' ไร่ ' + areaText.ngan + ' งาน · กด "สร้างจุดปลูก" ได้เลย', 'ok');
+  let crossing = false;
+  try { crossing = turf.kinks(currentFeature).features.length > 0; } catch (error) { crossing = false; }
+  if (crossing) setStatus('⚠ เส้นขอบตัดกันเอง พื้นที่อาจคลาดเคลื่อน · ตรวจลำดับมุม หรือวาดใหม่ก่อนสร้างจุดปลูก', 'warn');
+  else setStatus('พื้นที่ ' + areaText.rai + ' ไร่ ' + areaText.ngan + ' งาน · กด "สร้างจุดปลูก" ได้เลย', 'ok');
 });
 map.on(L.Draw.Event.EDITED, () => {
   clearGrid(); updateArea();

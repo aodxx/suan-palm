@@ -264,3 +264,12 @@ test('guided main flow card connects draw -> area -> plant -> check with one nex
   assert.match(css, /body\[data-mobile-view="tools"\] \.map-flow/);
   assert.match(css, /\.map-flow\.flow-pop\s*\{\s*animation: none/);
 });
+
+test('boundary drawing has no upper vertex limit on mobile or desktop', () => {
+  const app = read('js/app.js');
+  assert.match(app, /polygon:\s*\{\s*allowIntersection:\s*true/);
+  assert.doesNotMatch(app, /mobileBoundaryPoints\.length\s*(>=|>|===)\s*(3|4|5|6|8|10)\s*\)\s*(return|\{\s*return)/);
+  assert.doesNotMatch(app, /MAX_(VERTEX|VERTICES|BOUNDARY)/i);
+  assert.match(app, /turf\.kinks\(currentFeature\)/);
+  assert.match(html, /ปักกี่มุมก็ได้/);
+});
