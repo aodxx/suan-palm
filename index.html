@@ -115,10 +115,15 @@
       <strong id="mapSegmentDistance">ช่วงล่าสุด 0 ม.</strong><span id="mapBoundaryHint">เลื่อนแผนที่แล้วแตะ + เพื่อปักจุด</span>
     </div>
     <div class="map-boundary-tools"><button id="mapBoundaryCancel" type="button">× ยกเลิก</button><button id="mapBoundaryUndo" type="button" aria-label="ย้อนจุดขอบเขตล่าสุด" hidden>↶ ย้อนจุด</button></div>
-    <div class="map-quick-actions" aria-label="เครื่องมือแผนที่">
-      <button id="mapLocateAction" class="map-round-action" type="button" aria-label="ใช้ตำแหน่งของฉัน" title="ใช้ตำแหน่งของฉัน">⌖</button>
-      <button id="mapLayersAction" class="map-round-action" type="button" aria-label="เปลี่ยนชั้นแผนที่" aria-expanded="false" aria-controls="mapLayerSheet" title="เปลี่ยนชั้นแผนที่">▱</button>
+    <div class="map-compass" role="img" aria-label="ทิศเหนืออยู่ด้านบนของแผนที่" title="ทิศเหนืออยู่ด้านบนเสมอ">
+      <span>N</span><img src="assets/icons/ui-3d/north-arrow.svg" alt="">
     </div>
+    <div class="map-quick-actions" aria-label="เครื่องมือแผนที่">
+      <button id="mapLocateAction" class="map-round-action" type="button" aria-label="ใช้ตำแหน่งของฉัน" title="ใช้ตำแหน่งของฉัน"><img src="assets/icons/ui-3d/locate.svg" alt=""></button>
+      <button id="mapLayersAction" class="map-round-action" type="button" aria-label="เปลี่ยนชั้นแผนที่" aria-expanded="false" aria-controls="mapLayerSheet" title="เปลี่ยนชั้นแผนที่"><img src="assets/icons/ui-3d/layers.svg" alt=""></button>
+      <button id="mapCameraAction" class="map-round-action" type="button" aria-label="ถ่ายภาพและปักหมุดบนแผนที่" title="ถ่ายภาพภาคสนาม"><img src="assets/icons/ui-3d/camera.svg" alt=""></button>
+    </div>
+    <input id="mapCameraInput" type="file" accept="image/*" capture="environment" hidden aria-label="ถ่ายภาพภาคสนาม">
     <div class="map-action-area">
       <div id="mapActionMenu" class="map-action-menu" hidden>
         <button id="mapDrawAction" type="button"><span class="menu-action-icon">⬡</span><span><b>วาดขอบเขตแปลง</b><small>เลื่อนแผนที่ให้กากบาทตรงจุด แล้วกด +</small></span></button>

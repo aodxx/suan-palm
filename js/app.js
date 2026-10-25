@@ -1082,6 +1082,50 @@ if ($('mapPlotPinAction')) $('mapPlotPinAction').addEventListener('click', () =>
   else $('btnPickPlot').click();
 });
 if ($('mapLocateAction')) $('mapLocateAction').addEventListener('click', () => $('btnLocate').click());
+const cameraPhotoMarkers = [];
+function clearCameraPhotoMarkers() {
+  cameraPhotoMarkers.forEach(({ marker, imageUrl }) => {
+    map.removeLayer(marker);
+    URL.revokeObjectURL(imageUrl);
+  });
+  cameraPhotoMarkers.length = 0;
+}
+if ($('mapCameraAction')) $('mapCameraAction').addEventListener('click', () => {
+  closeMapActionMenu();
+  closeMapLayerSheet();
+  $('mapCameraInput')?.click();
+});
+if ($('mapCameraInput')) $('mapCameraInput').addEventListener('change', event => {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+  if (file.type && !file.type.startsWith('image/')) {
+    setStatus('กรุณาเลือกไฟล์ภาพจากกล้องหรืออุปกรณ์', 'warn');
+    return;
+  }
+  const imageUrl = URL.createObjectURL(file);
+  const center = map.getCenter();
+  const popup = document.createElement('div');
+  popup.className = 'camera-photo-popup';
+  const image = document.createElement('img');
+  image.src = imageUrl;
+  image.alt = 'ภาพภาคสนามที่ถ่ายไว้';
+  const caption = document.createElement('p');
+  caption.textContent = (file.name || 'ภาพภาคสนาม') + ' · ' + center.lat.toFixed(6) + ', ' + center.lng.toFixed(6);
+  popup.append(image, caption);
+  const marker = L.marker(center, {
+    title: 'ภาพภาคสนาม',
+    icon: L.divIcon({
+      className: 'camera-photo-icon',
+      html: '<img src="assets/icons/ui-3d/camera.svg" alt="">',
+      iconSize: [42, 42],
+      iconAnchor: [21, 21]
+    })
+  }).addTo(map);
+  marker.bindPopup(popup, { maxWidth: 270 }).openPopup();
+  cameraPhotoMarkers.push({ marker, imageUrl, fileName: file.name || 'ภาพภาคสนาม' });
+  setStatus('ปักหมุดภาพไว้ที่กึ่งกลางแผนที่แล้ว · ภาพอยู่ชั่วคราวในหน้านี้และไม่ถูกอัปโหลด', 'ok');
+});
 function closeMapLayerSheet() {
   if ($('mapLayerSheet')) $('mapLayerSheet').hidden = true;
   if ($('mapLayerScrim')) $('mapLayerScrim').hidden = true;
@@ -1190,8 +1234,9 @@ $('btnGenerate').addEventListener('click', () => {
 });
 // [แก้ไข 2] เพิ่ม confirm ก่อนล้างทั้งหมด (ถ้ากดยกเลิกให้ยกเลิกการล้าง)
 $('btnClear').addEventListener('click', () => {
-  if ((drawnItems.getLayers().length || trees.length) && !confirm('⚠️ คุณแน่ใจหรือไม่ที่จะล้างพื้นที่และจุดปลูกทั้งหมด? ข้อมูลจะหายไปและกู้คืนไม่ได้')) return;
+  if ((drawnItems.getLayers().length || trees.length || cameraPhotoMarkers.length) && !confirm('⚠️ คุณแน่ใจหรือไม่ที่จะล้างพื้นที่ จุดปลูก และหมุดภาพทั้งหมด? ข้อมูลจะหายไปและกู้คืนไม่ได้')) return;
   drawnItems.clearLayers(); clearGrid();
+  clearCameraPhotoMarkers();
   plotLocation = null;
   plotAddress = null;
   pickingPlotLocation = false;
