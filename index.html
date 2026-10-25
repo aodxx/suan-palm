@@ -124,14 +124,15 @@
       <button id="mapCameraAction" class="map-round-action" type="button" aria-label="ถ่ายภาพและปักหมุดบนแผนที่" title="ถ่ายภาพภาคสนาม"><img src="assets/icons/ui-3d/camera.svg" alt=""></button>
     </div>
     <input id="mapCameraInput" type="file" accept="image/*" capture="environment" hidden aria-label="ถ่ายภาพภาคสนาม">
-    <div class="map-action-area">
-      <div id="mapActionMenu" class="map-action-menu" hidden>
-        <button id="mapDrawAction" type="button"><span class="menu-action-icon">⬡</span><span><b>วาดขอบเขตแปลง</b><small>เลื่อนแผนที่ให้กากบาทตรงจุด แล้วกด +</small></span></button>
-        <button id="mapMeasureAction" type="button"><span class="menu-action-icon">↗</span><span><b>วัดระยะ</b><small>ปักจุดตามแนวที่ต้องการวัด แล้วกด ✓</small></span></button>
-        <button id="mapPlantAction" type="button"><span class="menu-action-icon">✳</span><span><b>สร้างจุดปลูก</b><small>คำนวณตำแหน่งตามระยะและแนวแถว</small></span></button>
-        <button id="mapPlotPinAction" type="button"><span class="menu-action-icon">⌖</span><span><b>ปักจุดกึ่งกลางแปลง</b><small>เลือกตำแหน่งบนแผนที่</small></span></button>
+    <button id="mapActionBackdrop" class="map-action-backdrop" type="button" aria-label="ปิดเมนูคำสั่ง" hidden></button>
+    <div id="mapActionArea" class="map-action-area">
+      <div id="mapActionMenu" class="map-action-menu" role="group" aria-label="คำสั่งแผนที่" aria-hidden="true" inert>
+        <button id="mapDrawAction" type="button" aria-label="วาดขอบเขตแปลง" title="วาดขอบเขตแปลง"><span class="menu-action-icon"><img src="assets/icons/ui-3d/draw.svg" alt=""></span><span class="menu-action-label">วาดแปลง</span></button>
+        <button id="mapMeasureAction" type="button" aria-label="วัดระยะ" title="วัดระยะ"><span class="menu-action-icon"><img src="assets/icons/ui-3d/measure.svg" alt=""></span><span class="menu-action-label">วัดระยะ</span></button>
+        <button id="mapPlantAction" type="button" aria-label="สร้างจุดปลูก" title="สร้างจุดปลูก"><span class="menu-action-icon"><img src="assets/icons/ui-3d/plant.svg" alt=""></span><span class="menu-action-label">สร้างจุดปลูก</span></button>
+        <button id="mapPlotPinAction" type="button" aria-label="ปักจุดกึ่งกลางแปลง" title="ปักจุดกึ่งกลางแปลง"><span class="menu-action-icon"><img src="assets/icons/ui-3d/plot.svg" alt=""></span><span class="menu-action-label">ปักกึ่งกลาง</span></button>
       </div>
-      <button id="mapPrimaryAction" class="map-primary-action" type="button" aria-expanded="false" aria-controls="mapActionMenu" aria-label="เปิดคำสั่งแผนที่">+</button>
+      <button id="mapPrimaryAction" class="map-primary-action" type="button" aria-expanded="false" aria-controls="mapActionMenu" aria-label="เปิดคำสั่งแผนที่"><span aria-hidden="true">+</span></button>
     </div>
     <div id="mapLayerScrim" class="map-layer-scrim" hidden></div>
     <section id="mapLayerSheet" class="map-layer-sheet" role="dialog" aria-modal="true" aria-labelledby="mapLayerTitle" hidden>

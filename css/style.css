@@ -330,3 +330,80 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
   .map-round-action { width: 48px; height: 48px; min-height: 48px; border-radius: 15px; }
   .map-action-area { bottom: calc(74px + env(safe-area-inset-bottom)); }
 }
+
+
+/* Centered mobile FAB with a four-action radial arc. */
+@media (max-width: 720px), (orientation: landscape) and (max-width: 900px) {
+  .map-action-backdrop {
+    position: fixed; z-index: 15; inset: 0; display: block; width: 100%; height: 100%; min-height: 0;
+    margin: 0; padding: 0; border: 0; border-radius: 0; background: #0b1911a8;
+    opacity: 0; pointer-events: none; transition: opacity .22s ease;
+  }
+  .map-action-backdrop[hidden] { display: none; }
+  .map-action-backdrop.is-visible { opacity: 1; pointer-events: auto; }
+  .map-action-area {
+    position: absolute; z-index: 20; top: auto; right: auto; bottom: calc(121px + env(safe-area-inset-bottom)); left: 50%;
+    display: block; width: 0; height: 0; gap: 0; transform: none; pointer-events: none;
+    --radial-side: clamp(88px, 28vw, 110px);
+    --radial-inner: clamp(42px, 13vw, 54px);
+  }
+  .map-primary-action {
+    position: absolute; z-index: 2; top: 0; left: 0; transform: translate(-50%, -50%);
+    transition: transform .36s cubic-bezier(.2,.85,.2,1.2), background .2s ease, box-shadow .2s ease;
+  }
+  .map-action-area .map-primary-action[aria-expanded="true"] {
+    transform: translate(-50%, -50%) rotate(45deg); background: #245f38;
+  }
+  .map-action-menu {
+    position: absolute; z-index: 1; top: 0; left: 0; display: block; width: 0; height: 0; min-height: 0;
+    gap: 0; padding: 0; overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none;
+    visibility: hidden; pointer-events: none; transition: visibility 0s linear .38s;
+  }
+  .map-action-area.is-open .map-action-menu { visibility: visible; pointer-events: auto; transition-delay: 0s; }
+  .map-action-menu button {
+    position: absolute; top: var(--radial-y); left: var(--radial-x); display: grid; place-items: center;
+    width: 58px; height: 58px; min-height: 58px; margin: 0; padding: 0; overflow: visible;
+    border: 1px solid #dce7de; border-radius: 50%; background: #fff; box-shadow: 0 5px 16px #10201642;
+    opacity: 0; transform: translate(-50%, -50%) scale(.24); pointer-events: none;
+    transition: opacity .16s ease, transform .38s cubic-bezier(.2,.85,.2,1.2), background .16s ease;
+  }
+  .map-action-area.is-open .map-action-menu button {
+    opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; transition-delay: var(--radial-delay);
+  }
+  .map-action-menu button:active { background: #edf6ee; }
+  #mapDrawAction { --radial-x: calc(-1 * var(--radial-side)); --radial-y: -116px; --radial-delay: 0ms; }
+  #mapMeasureAction { --radial-x: calc(-1 * var(--radial-inner)); --radial-y: -188px; --radial-delay: 35ms; }
+  #mapPlantAction { --radial-x: var(--radial-inner); --radial-y: -188px; --radial-delay: 70ms; }
+  #mapPlotPinAction { --radial-x: var(--radial-side); --radial-y: -116px; --radial-delay: 105ms; }
+  .map-action-menu .menu-action-icon {
+    position: absolute; inset: 0; display: grid; place-items: center; width: auto; height: auto; min-width: 0;
+    border: 0; border-radius: 50%; background: #eef6ef; color: #2f7542;
+  }
+  .map-action-menu .menu-action-icon img { display: block; width: 27px; height: 27px; object-fit: contain; }
+  .map-action-menu .menu-action-label {
+    position: absolute; top: calc(100% + 6px); left: 50%; display: block; width: max-content; max-width: min(94px, calc(50vw - 16px));
+    padding: 4px 7px; overflow: hidden; border: 1px solid #e0e8e1; border-radius: 9px; background: #fffffff5;
+    box-shadow: 0 2px 8px #1020162e; color: #254e31; font-size: 10px; font-weight: 700; line-height: 1.2;
+    text-align: center; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
+  }
+  .map-action-menu button:focus-visible { outline: 3px solid #f28c28; outline-offset: 3px; }
+}
+@media (orientation: landscape) and (max-width: 900px) {
+  .map-action-area { bottom: calc(95px + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-action-backdrop, .map-action-menu, .map-action-menu button, .map-primary-action { transition-duration: .01ms !important; transition-delay: 0ms !important; }
+}
+
+@media (max-width: 720px), (orientation: landscape) and (max-width: 900px) {
+  .map-action-menu button .menu-action-label { display: block; gap: 0; }
+}
+
+@media (max-width: 720px), (orientation: landscape) and (max-width: 900px) {
+  #mapMeasureAction, #mapPlantAction { --radial-y: -214px; }
+}
+@media (orientation: landscape) and (max-width: 900px) {
+  .map-action-area { bottom: calc(108px + env(safe-area-inset-bottom)); }
+  #mapMeasureAction, #mapPlantAction { --radial-y: -188px; }
+  .map-action-menu .menu-action-label { display: none !important; }
+}

@@ -1041,11 +1041,36 @@ if ($('mobilePrimaryAction')) $('mobilePrimaryAction').addEventListener('click',
   }
 });
 const mapActionMenu = $('mapActionMenu');
+const mapActionArea = $('mapActionArea');
+const mapActionBackdrop = $('mapActionBackdrop');
 const mapPrimaryAction = $('mapPrimaryAction');
-function closeMapActionMenu() {
-  if (!mapActionMenu || !mapPrimaryAction) return;
-  mapActionMenu.hidden = true;
-  mapPrimaryAction.setAttribute('aria-expanded', 'false');
+let mapActionBackdropTimer = null;
+function setMapActionMenuOpen(open, { restoreFocus = false } = {}) {
+  if (!mapActionMenu || !mapActionArea || !mapActionBackdrop || !mapPrimaryAction) return;
+  if (mapActionBackdropTimer) clearTimeout(mapActionBackdropTimer);
+  mapActionArea.classList.toggle('is-open', open);
+  mapActionMenu.setAttribute('aria-hidden', String(!open));
+  mapActionMenu.inert = !open;
+  mapPrimaryAction.setAttribute('aria-expanded', String(open));
+  mapPrimaryAction.setAttribute('aria-label', open ? 'ปิดเมนูคำสั่ง' : 'เปิดคำสั่งแผนที่');
+  if (open) {
+    mapActionBackdrop.hidden = false;
+    requestAnimationFrame(() => {
+      if (mapActionArea.classList.contains('is-open')) mapActionBackdrop.classList.add('is-visible');
+    });
+    requestAnimationFrame(() => {
+      if (mapActionArea.classList.contains('is-open')) mapActionMenu.querySelector('button')?.focus({ preventScroll: true });
+    });
+  } else {
+    mapActionBackdrop.classList.remove('is-visible');
+    mapActionBackdropTimer = window.setTimeout(() => {
+      if (!mapActionArea.classList.contains('is-open')) mapActionBackdrop.hidden = true;
+    }, 220);
+    if (restoreFocus) mapPrimaryAction.focus({ preventScroll: true });
+  }
+}
+function closeMapActionMenu(options = {}) {
+  setMapActionMenuOpen(false, options);
 }
 if (mapPrimaryAction) mapPrimaryAction.addEventListener('click', () => {
   if (mobileBoundaryMode) {
@@ -1055,21 +1080,27 @@ if (mapPrimaryAction) mapPrimaryAction.addEventListener('click', () => {
     return;
   }
   const open = mapPrimaryAction.getAttribute('aria-expanded') !== 'true';
-  mapActionMenu.hidden = !open;
-  mapPrimaryAction.setAttribute('aria-expanded', String(open));
+  setMapActionMenuOpen(open);
+});
+if (mapActionBackdrop) mapActionBackdrop.addEventListener('click', () => closeMapActionMenu({ restoreFocus: true }));
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && mapActionArea?.classList.contains('is-open')) {
+    event.preventDefault();
+    closeMapActionMenu({ restoreFocus: true });
+  }
 });
 if ($('mapDrawAction')) $('mapDrawAction').addEventListener('click', () => {
-  closeMapActionMenu();
+  closeMapActionMenu({ restoreFocus: true });
   if (usesMobileMapUI()) startMobileBoundary();
   else document.querySelector('.leaflet-draw-draw-polygon')?.click();
 });
 if ($('mapMeasureAction')) $('mapMeasureAction').addEventListener('click', () => {
-  closeMapActionMenu();
+  closeMapActionMenu({ restoreFocus: true });
   if (usesMobileMapUI()) startMobileBoundary('measure');
   else setStatus('ใช้เครื่องมือวัดบนแผนที่ในโหมดมือถือ หรือวาด Polygon เพื่อดูความยาวแนวเขต', 'warn');
 });
 if ($('mapPlantAction')) $('mapPlantAction').addEventListener('click', () => {
-  closeMapActionMenu();
+  closeMapActionMenu({ restoreFocus: true });
   if ($('btnGenerate').disabled) {
     setStatus('วาดขอบเขตแปลงก่อน แล้วจึงสร้างจุดปลูกได้', 'warn');
     return;
@@ -1077,7 +1108,7 @@ if ($('mapPlantAction')) $('mapPlantAction').addEventListener('click', () => {
   $('btnGenerate').click();
 });
 if ($('mapPlotPinAction')) $('mapPlotPinAction').addEventListener('click', () => {
-  closeMapActionMenu();
+  closeMapActionMenu({ restoreFocus: true });
   if (usesMobileMapUI()) savePlotLocation(map.getCenter());
   else $('btnPickPlot').click();
 });
@@ -1172,7 +1203,7 @@ if (usesMobileMapUI()) setMobileView('map');
 map.on('move', updateMobileMeasurePreview);
 map.on('zoomend', updateMobileMeasurePreview);
 document.addEventListener('click', event => {
-  if (mapActionMenu && !event.target.closest('.map-action-area') && !mapActionMenu.hidden) closeMapActionMenu();
+  if (mapActionArea?.classList.contains('is-open') && !event.target.closest('.map-action-area')) closeMapActionMenu();
 });
 if (window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-width: 900px)').matches) {
   try {
