@@ -344,8 +344,7 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
   .map-action-area {
     position: absolute; z-index: 20; top: auto; right: auto; bottom: calc(121px + env(safe-area-inset-bottom)); left: 50%;
     display: block; width: 0; height: 0; gap: 0; transform: none; pointer-events: none;
-    --radial-side: clamp(88px, 28vw, 110px);
-    --radial-inner: clamp(42px, 13vw, 54px);
+    --menu-column: clamp(46px, 14vw, 54px);
   }
   .map-primary-action {
     position: absolute; z-index: 2; top: 0; left: 0; transform: translate(-50%, -50%);
@@ -371,10 +370,10 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
     opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; transition-delay: var(--radial-delay);
   }
   .map-action-menu button:active { background: #edf6ee; }
-  #mapDrawAction { --radial-x: calc(-1 * var(--radial-side)); --radial-y: -116px; --radial-delay: 0ms; }
-  #mapMeasureAction { --radial-x: calc(-1 * var(--radial-inner)); --radial-y: -188px; --radial-delay: 35ms; }
-  #mapPlantAction { --radial-x: var(--radial-inner); --radial-y: -188px; --radial-delay: 70ms; }
-  #mapPlotPinAction { --radial-x: var(--radial-side); --radial-y: -116px; --radial-delay: 105ms; }
+  #mapDrawAction { --radial-x: calc(-1 * var(--menu-column)); --radial-y: -82px; --radial-delay: 0ms; }
+  #mapMeasureAction { --radial-x: calc(-1 * var(--menu-column)); --radial-y: -154px; --radial-delay: 35ms; }
+  #mapPlantAction { --radial-x: var(--menu-column); --radial-y: -154px; --radial-delay: 70ms; }
+  #mapPlotPinAction { --radial-x: var(--menu-column); --radial-y: -82px; --radial-delay: 105ms; }
   .map-action-menu .menu-action-icon {
     position: absolute; inset: 0; display: grid; place-items: center; width: auto; height: auto; min-width: 0;
     border: 0; border-radius: 50%; background: #eef6ef; color: #2f7542;
@@ -399,11 +398,7 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
   .map-action-menu button .menu-action-label { display: block; gap: 0; }
 }
 
-@media (max-width: 720px), (orientation: landscape) and (max-width: 900px) {
-  #mapMeasureAction, #mapPlantAction { --radial-y: -214px; }
-}
 @media (orientation: landscape) and (max-width: 900px) {
   .map-action-area { bottom: calc(108px + env(safe-area-inset-bottom)); }
-  #mapMeasureAction, #mapPlantAction { --radial-y: -188px; }
   .map-action-menu .menu-action-label { display: none !important; }
 }

@@ -401,6 +401,8 @@ let mobileBoundaryPreview = null;
 let mobileBoundaryMarkers = [];
 let mobileBoundaryDistanceMarkers = [];
 let mobilePreviewDistanceMarker = null;
+let desktopMeasureLayer = null;
+let desktopMeasureHandler = null;
 
 function usesMobileMapUI() {
   return window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-width: 900px)').matches;
@@ -413,6 +415,20 @@ function formatMapDistance(meters) {
 function formatMapArea(squareMeters, preview = false) {
   if (squareMeters < 400) return (preview ? '≈ ' : '') + squareMeters.toLocaleString('th-TH', { maximumFractionDigits: 0 }) + ' ตร.ม.';
   return (preview ? '≈ ' : '') + (squareMeters / RAI_M2).toFixed(2) + ' ไร่';
+}
+
+function startDesktopMeasure() {
+  if (desktopMeasureHandler?.enabled()) desktopMeasureHandler.disable();
+  if (desktopMeasureLayer) map.removeLayer(desktopMeasureLayer);
+  desktopMeasureLayer = null;
+  lastMeasuredDistance = null;
+  updateMapSummary();
+  desktopMeasureHandler = new L.Draw.Polyline(map, {
+    metric: true,
+    shapeOptions: { color: '#f28c28', weight: 4, opacity: 0.95, dashArray: '8 6' }
+  });
+  desktopMeasureHandler.enable();
+  setStatus('โหมดวัดระยะ: คลิกจุดเริ่มและจุดถัดไปบนแผนที่ แล้วดับเบิลคลิกเพื่อจบ', 'ok');
 }
 
 function updateMobileMeasurePreview() {
@@ -525,6 +541,7 @@ function stopMobileBoundary() {
   $('mapUI')?.classList.remove('is-drawing');
   if ($('mapMeasureBadge')) $('mapMeasureBadge').hidden = true;
   if ($('mapBoundaryUndo')) $('mapBoundaryUndo').hidden = true;
+  if ($('mapActionMenu')) $('mapActionMenu').hidden = false;
   if ($('mapPrimaryAction')) {
     $('mapPrimaryAction').textContent = '+';
     $('mapPrimaryAction').dataset.canFinish = 'false';
@@ -1054,6 +1071,7 @@ function setMapActionMenuOpen(open, { restoreFocus = false } = {}) {
   mapPrimaryAction.setAttribute('aria-expanded', String(open));
   mapPrimaryAction.setAttribute('aria-label', open ? 'ปิดเมนูคำสั่ง' : 'เปิดคำสั่งแผนที่');
   if (open) {
+    mapActionMenu.hidden = false;
     mapActionBackdrop.hidden = false;
     requestAnimationFrame(() => {
       if (mapActionArea.classList.contains('is-open')) mapActionBackdrop.classList.add('is-visible');
@@ -1097,7 +1115,7 @@ if ($('mapDrawAction')) $('mapDrawAction').addEventListener('click', () => {
 if ($('mapMeasureAction')) $('mapMeasureAction').addEventListener('click', () => {
   closeMapActionMenu({ restoreFocus: true });
   if (usesMobileMapUI()) startMobileBoundary('measure');
-  else setStatus('ใช้เครื่องมือวัดบนแผนที่ในโหมดมือถือ หรือวาด Polygon เพื่อดูความยาวแนวเขต', 'warn');
+  else startDesktopMeasure();
 });
 if ($('mapPlantAction')) $('mapPlantAction').addEventListener('click', () => {
   closeMapActionMenu({ restoreFocus: true });
@@ -1236,10 +1254,28 @@ map.on('click', e => {
   if (pickingPlotLocation) savePlotLocation(e.latlng);
 });
 map.on(L.Draw.Event.CREATED, e => {
+  if (e.layerType === 'polyline') {
+    const points = e.layer.getLatLngs();
+    const distance = points.slice(1).reduce((sum, point, index) => sum + map.distance(points[index], point), 0);
+    desktopMeasureLayer = e.layer.addTo(map);
+    desktopMeasureHandler = null;
+    lastMeasuredDistance = distance;
+    desktopMeasureLayer.bindTooltip('ระยะรวม ' + formatMapDistance(distance), {
+      permanent: true, direction: 'center', className: 'boundary-distance-icon'
+    }).openTooltip();
+    updateMapSummary();
+    setStatus('วัดระยะได้ ' + formatMapDistance(distance) + ' · แนววัดนี้ไม่เปลี่ยนขอบเขตแปลง', 'ok');
+    return;
+  }
   if (trees.length && !confirm('การวาดขอบเขตใหม่จะแทนแปลงเดิมและล้างจุดปลูกทั้งหมด รวมถึงจุดที่ลากปรับไว้ ต้องการดำเนินการต่อหรือไม่?')) {
     setStatus('ยกเลิกการวาดขอบเขตใหม่แล้ว; แปลงและจุดปลูกเดิมยังอยู่', 'ok');
     return;
   }
+  if (desktopMeasureLayer) map.removeLayer(desktopMeasureLayer);
+  desktopMeasureLayer = null;
+  if (desktopMeasureHandler?.enabled()) desktopMeasureHandler.disable();
+  desktopMeasureHandler = null;
+  lastMeasuredDistance = null;
   drawnItems.clearLayers();          // จำกัดให้มี 1 Polygon
   clearGrid();
   drawnItems.addLayer(e.layer);

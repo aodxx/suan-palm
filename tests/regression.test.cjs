@@ -167,7 +167,7 @@ test('mobile map provides an explicit north-up indicator and user-initiated came
   assert.match(app, /URL\.revokeObjectURL\(imageUrl\)/);
 });
 
-test('mobile primary action is centered and opens a radial menu with dim backdrop and auto-close', () => {
+test('mobile primary action opens a compact balanced two-row menu with dim backdrop and auto-close', () => {
   assert.match(html, /id="mapActionArea" class="map-action-area"/);
   assert.match(html, /id="mapActionBackdrop"[^>]*aria-label="ปิดเมนูคำสั่ง"[^>]*hidden/);
   assert.match(html, /id="mapActionMenu"[^>]*aria-hidden="true" inert/);
@@ -175,9 +175,13 @@ test('mobile primary action is centered and opens a radial menu with dim backdro
     assert.match(html, new RegExp(`assets/icons/ui-3d/${icon}`));
   }
   assert.match(css, /\.map-action-area\s*\{[^}]*left:\s*50%/);
-  assert.match(css, /#mapDrawAction\s*\{[^}]*--radial-x:/);
-  assert.match(css, /#mapMeasureAction\s*\{[^}]*--radial-y:\s*-188px/);
-  assert.match(css, /#mapMeasureAction, #mapPlantAction\s*\{\s*--radial-y:\s*-214px/);
+  assert.match(css, /--menu-column:\s*clamp\(46px,\s*14vw,\s*54px\)/);
+  assert.match(css, /#mapDrawAction\s*\{[^}]*--radial-x:\s*calc\(-1 \* var\(--menu-column\)\);[^}]*--radial-y:\s*-82px/);
+  assert.match(css, /#mapMeasureAction\s*\{[^}]*--radial-x:\s*calc\(-1 \* var\(--menu-column\)\);[^}]*--radial-y:\s*-154px/);
+  assert.match(css, /#mapPlantAction\s*\{[^}]*--radial-x:\s*var\(--menu-column\);[^}]*--radial-y:\s*-154px/);
+  assert.match(css, /#mapPlotPinAction\s*\{[^}]*--radial-x:\s*var\(--menu-column\);[^}]*--radial-y:\s*-82px/);
+  assert.doesNotMatch(css, /--radial-side:\s*clamp\(88px,\s*28vw,\s*110px\)/);
+  assert.doesNotMatch(css, /--radial-y:\s*-214px/);
   assert.match(css, /\.map-action-area\s*\{\s*bottom:\s*calc\(108px/);
   assert.match(css, /\.map-action-menu \.menu-action-label\s*\{\s*display:\s*none !important/);
   assert.match(css, /\.map-action-area\.is-open \.map-action-menu button\s*\{[^}]*scale\(1\)/);
@@ -188,4 +192,16 @@ test('mobile primary action is centered and opens a radial menu with dim backdro
   assert.match(app, /mapActionBackdrop\.addEventListener\('click'/);
   assert.match(app, /event\.key === 'Escape'/);
   assert.match(app, /closeMapActionMenu\(\{ restoreFocus: true \}\)/);
+  assert.match(app, /if \(open\) \{[\s\S]*?mapActionMenu\.hidden = false;/);
+  assert.match(app, /function stopMobileBoundary\([\s\S]*?mapActionMenu'\)\) \$\('mapActionMenu'\)\.hidden = false;/);
+});
+
+test('map submenu actions connect drawing, measurement, planting and plot-center pinning to usable features', () => {
+  const app = read('js/app.js');
+  assert.match(app, /if \(\$\('mapDrawAction'\)\)[\s\S]*?startMobileBoundary\(\)[\s\S]*?leaflet-draw-draw-polygon/);
+  assert.match(app, /if \(\$\('mapMeasureAction'\)\)[\s\S]*?startMobileBoundary\('measure'\)[\s\S]*?startDesktopMeasure\(\)/);
+  assert.match(app, /function startDesktopMeasure\([\s\S]*?desktopMeasureHandler\?\.enabled\(\)[\s\S]*?desktopMeasureHandler\.disable\(\)[\s\S]*?desktopMeasureHandler = new L\.Draw\.Polyline\(map/);
+  assert.match(app, /if \(e\.layerType === 'polyline'\)[\s\S]*?formatMapDistance\(distance\)[\s\S]*?return;/);
+  assert.match(app, /if \(\$\('mapPlantAction'\)\)[\s\S]*?\$\('btnGenerate'\)\.click\(\)/);
+  assert.match(app, /if \(\$\('mapPlotPinAction'\)\)[\s\S]*?savePlotLocation\(map\.getCenter\(\)\)[\s\S]*?\$\('btnPickPlot'\)\.click\(\)/);
 });
