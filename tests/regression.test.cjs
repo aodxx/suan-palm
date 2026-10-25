@@ -123,11 +123,11 @@ test('CSS keeps shared icon sizing and no sidebar sheet/dock in one-page mobile 
 });
 
 test('map workflow supports crosshair boundary placement and separate app destinations', () => {
-  for (const id of ['mapAreaSummary', 'mapTreeSummary', 'mapPerimeterSummary', 'mapPerimeterLabel', 'mapCrosshair', 'mapMeasureBadge', 'mapLocateAction', 'mapLayersAction', 'mapLayerSheet', 'mapLayerScrim', 'mapLayerClose', 'mapPrimaryAction', 'mapActionMenu', 'mapActionArea', 'mapActionBackdrop', 'mapDrawAction', 'mapMeasureAction', 'mapPlantAction', 'mapPlotPinAction', 'mapBoundaryUndo', 'mapBoundaryCancel', 'mapToolsShortcut', 'mapReportShortcut']) {
+  for (const id of ['mapAreaSummary', 'mapTreeSummary', 'mapPerimeterSummary', 'mapPerimeterLabel', 'mapCrosshair', 'mapMeasureBadge', 'mapLocateAction', 'mapLayersAction', 'mapLayerSheet', 'mapLayerScrim', 'mapLayerClose', 'mapPrimaryAction', 'mapActionMenu', 'mapActionArea', 'mapActionBackdrop', 'mapDrawAction', 'mapMeasureAction', 'mapPlantAction', 'mapPlotPinAction', 'mapBoundaryUndo', 'mapBoundaryFinish', 'mapBoundaryCancel', 'mapToolsShortcut', 'mapReportShortcut']) {
     assert.match(html, new RegExp(`id="${id}"`), `missing map control #${id}`);
   }
   assert.match(css, /\.map-ui\.is-drawing \.map-crosshair\s*\{\s*display:\s*block/);
-  assert.match(css, /\.map-ui\.is-drawing \.map-primary-action\[data-can-finish="true"\]/);
+  assert.match(css, /\.map-boundary-tools #mapBoundaryFinish\s*\{[^}]*background:\s*#168447/);
   assert.match(css, /\.map-layer-sheet\s*\{\s*position:\s*fixed/);
   assert.match(css, /\.map-primary-action\s*\{[^}]*background:\s*#f28c28/);
   assert.deepEqual([...html.matchAll(/data-map-layer="([^"]+)"/g)].map(match => match[1]), ['satellite', 'road', 'hybrid']);
@@ -146,6 +146,33 @@ test('map workflow supports crosshair boundary placement and separate app destin
   assert.match(app, /function formatMapArea\(/);
   assert.match(app, /formatMapArea\(currentAreaM2\)/);
   assert.match(app, /area\.textContent = currentFeature/);
+});
+
+test('mobile boundary can add more than three vertices and finishes with a separate confirmation button', () => {
+  const app = read('js/app.js');
+  assert.match(app, /if \(mobileBoundaryMode\) \{\s*addMobileBoundaryPoint\(\);\s*return;/);
+  assert.match(app, /if \(\$\('mapBoundaryFinish'\)\) \$\('mapBoundaryFinish'\)\.addEventListener\('click', \(\) => \{\s*finishMobileBoundary\(\);/);
+  assert.match(app, /finishButton\.hidden = !canFinish/);
+  assert.match(app, /mobileBoundaryKind === 'measure' \? mobileBoundaryPoints\.length >= 2 : mobileBoundaryPoints\.length >= 3/);
+  assert.match(app, /const coords = mobileBoundaryPoints\.map\(point => \[point\.lat, point\.lng\]\)/);
+
+  const start = app.indexOf('function addMobileBoundaryPoint() {');
+  const end = app.indexOf('\nfunction undoMobileBoundaryPoint()', start);
+  assert.ok(start >= 0 && end > start, 'mobile point insertion function exists');
+  let longitude = 100;
+  const context = {
+    mobileBoundaryPoints: [],
+    map: {
+      getCenter: () => ({ lat: 13, lng: longitude += 0.001 }),
+      distance: () => 100
+    },
+    L: { latLng: (lat, lng) => ({ lat, lng }) },
+    renderMobileBoundaryPoints() {},
+    setStatus() {}
+  };
+  vm.runInNewContext(`${app.slice(start, end)}\nthis.addPoint = addMobileBoundaryPoint;`, context);
+  for (let point = 0; point < 5; point++) context.addPoint();
+  assert.equal(context.mobileBoundaryPoints.length, 5, 'the mobile polygon accepts vertices beyond the three-point minimum');
 });
 
 test('mobile map provides an explicit north-up indicator and user-initiated camera capture', () => {
@@ -185,6 +212,7 @@ test('mobile primary action expands four round actions in a staggered semicircle
   assert.match(css, /transition:\s*opacity \.16s ease, transform \.38s cubic-bezier/);
   assert.match(css, /--radial-delay:\s*120ms/);
   assert.match(css, /\.map-action-area\s*\{\s*bottom:\s*calc\(108px/);
+  assert.match(css, /\.map-action-menu button \.menu-action-label\s*\{\s*display:\s*none !important/);
   assert.match(css, /\.map-action-menu \.menu-action-label\s*\{\s*display:\s*none !important/);
   assert.match(css, /\.map-action-area\.is-open \.map-action-menu button\s*\{[^}]*scale\(1\)/);
   assert.match(css, /\.map-action-backdrop\.is-visible\s*\{[^}]*opacity:\s*1/);

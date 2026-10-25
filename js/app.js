@@ -493,12 +493,24 @@ function renderMobileBoundaryPoints() {
   });
   const undo = $('mapBoundaryUndo');
   if (undo) undo.hidden = mobileBoundaryPoints.length === 0;
-  const finish = mobileBoundaryKind === 'measure' ? mobileBoundaryPoints.length >= 2 : mobileBoundaryPoints.length >= 3;
+  const canFinish = mobileBoundaryKind === 'measure' ? mobileBoundaryPoints.length >= 2 : mobileBoundaryPoints.length >= 3;
+  const finishButton = $('mapBoundaryFinish');
+  if (finishButton) {
+    finishButton.hidden = !canFinish;
+    finishButton.textContent = mobileBoundaryKind === 'measure' ? '✓ จบวัด' : '✓ บันทึก';
+    finishButton.setAttribute('aria-label', mobileBoundaryKind === 'measure' ? 'จบการวัดระยะ' : 'บันทึกขอบเขตแปลง');
+  }
+  const boundaryHint = $('mapBoundaryHint');
+  if (boundaryHint) {
+    boundaryHint.textContent = canFinish
+      ? (mobileBoundaryKind === 'measure' ? 'กด + เพื่อเพิ่มจุด หรือ ✓ จบวัด' : 'กด + เพื่อเพิ่มมุม หรือ ✓ บันทึกแปลง')
+      : (mobileBoundaryKind === 'measure' ? 'เลื่อนแผนที่แล้วกด + เพื่อเพิ่มจุด (อย่างน้อย 2 จุด)' : 'เลื่อนแผนที่แล้วกด + เพื่อเพิ่มมุม (อย่างน้อย 3 จุด)');
+  }
   if (mapPrimaryAction && mobileBoundaryMode) {
-    mapPrimaryAction.textContent = finish ? '✓' : '+';
-    mapPrimaryAction.dataset.canFinish = String(finish);
-    mapPrimaryAction.setAttribute('aria-label', finish ? (mobileBoundaryKind === 'measure' ? 'เสร็จสิ้นการวัดระยะ' : 'ยืนยันและบันทึกขอบเขตแปลง') : 'ปักจุดที่กากบาท');
-    mapPrimaryAction.title = finish ? (mobileBoundaryKind === 'measure' ? 'เสร็จสิ้นการวัด' : 'ยืนยันขอบเขต') : 'ปักจุดนี้';
+    mapPrimaryAction.textContent = '+';
+    mapPrimaryAction.dataset.canFinish = 'false';
+    mapPrimaryAction.setAttribute('aria-label', 'ปักจุดที่กากบาท');
+    mapPrimaryAction.title = 'เลื่อนแผนที่และกด + เพื่อเพิ่มจุด';
   }
   updateMobileMeasurePreview();
 }
@@ -541,6 +553,7 @@ function stopMobileBoundary() {
   $('mapUI')?.classList.remove('is-drawing');
   if ($('mapMeasureBadge')) $('mapMeasureBadge').hidden = true;
   if ($('mapBoundaryUndo')) $('mapBoundaryUndo').hidden = true;
+  if ($('mapBoundaryFinish')) $('mapBoundaryFinish').hidden = true;
   if ($('mapActionMenu')) $('mapActionMenu').hidden = false;
   if ($('mapPrimaryAction')) {
     $('mapPrimaryAction').textContent = '+';
@@ -1092,9 +1105,7 @@ function closeMapActionMenu(options = {}) {
 }
 if (mapPrimaryAction) mapPrimaryAction.addEventListener('click', () => {
   if (mobileBoundaryMode) {
-    const minPoints = mobileBoundaryKind === 'measure' ? 2 : 3;
-    if (mobileBoundaryPoints.length >= minPoints) finishMobileBoundary();
-    else addMobileBoundaryPoint();
+    addMobileBoundaryPoint();
     return;
   }
   const open = mapPrimaryAction.getAttribute('aria-expanded') !== 'true';
@@ -1201,6 +1212,10 @@ function setMobileMapLayer(name) {
 }
 document.querySelectorAll('[data-map-layer]').forEach(button => button.addEventListener('click', () => setMobileMapLayer(button.dataset.mapLayer)));
 if ($('mapBoundaryUndo')) $('mapBoundaryUndo').addEventListener('click', undoMobileBoundaryPoint);
+if ($('mapBoundaryFinish')) $('mapBoundaryFinish').addEventListener('click', () => {
+  finishMobileBoundary();
+  mapPrimaryAction?.focus({ preventScroll: true });
+});
 if ($('mapBoundaryCancel')) $('mapBoundaryCancel').addEventListener('click', () => { stopMobileBoundary(); setStatus('ยกเลิกการวาดขอบเขตแล้ว'); });
 function setMobileView(view) {
   if (!['map', 'tools', 'report'].includes(view)) return;

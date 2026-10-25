@@ -278,7 +278,6 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
   .map-boundary-undo { position: absolute; bottom: calc(98px + env(safe-area-inset-bottom)); left: 14px; display: inline-flex; align-items: center; min-height: 44px; margin: 0; border: 1px solid #fff; border-radius: 13px; background: #fff; color: #245735; box-shadow: 0 3px 12px #1020162c; pointer-events: auto; }
   .map-boundary-undo[hidden] { display: none; }
   .map-ui.is-drawing .map-primary-action { background: #2d8047; }
-  .map-ui.is-drawing .map-primary-action[data-can-finish="true"] { background: #168447; }
   .map-bottom-nav button[aria-current="page"] { color: #23663a; font-weight: 700; }
   .map-bottom-nav button:not([aria-current="page"]) { color: #657269; }
 }
@@ -291,9 +290,11 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
   .map-summary strong { font-size: 11px; }
   .boundary-number-icon { display: grid; place-items: center; border: 2px solid #fff; border-radius: 50%; background: #f28c28; color: #fff; box-shadow: 0 2px 7px #17221a66; font-family: system-ui, sans-serif; font-size: 12px; }
   .boundary-number-icon b { font-weight: 800; }
-  .map-boundary-tools { position: absolute; bottom: calc(91px + env(safe-area-inset-bottom)); left: 12px; display: none; gap: 7px; pointer-events: auto; }
+  .map-boundary-tools { position: absolute; bottom: calc(170px + env(safe-area-inset-bottom)); left: 12px; display: none; gap: 7px; pointer-events: auto; }
   .map-ui.is-drawing .map-boundary-tools { display: flex; }
   .map-boundary-tools button { min-height: 42px; margin: 0; padding: 7px 11px; border: 1px solid #ffffffd9; border-radius: 13px; background: #fffffff2; color: #284d33; box-shadow: 0 3px 12px #10201630; font-size: 12px; font-weight: 700; }
+  .map-boundary-tools #mapBoundaryFinish { border-color: #168447; background: #168447; color: #fff; }
+  .map-boundary-tools #mapBoundaryFinish[hidden] { display: none; }
   .map-boundary-tools #mapBoundaryUndo[hidden] { display: none; }
   .map-action-menu { width: min(330px, calc(100vw - 28px)); }
 }
@@ -398,7 +399,7 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
 }
 
 @media (max-width: 720px), (orientation: landscape) and (max-width: 900px) {
-  .map-action-menu button .menu-action-label { display: block; gap: 0; }
+  .map-action-menu button .menu-action-label { display: none !important; }
 }
 
 @media (max-width: 380px) and (orientation: portrait) {

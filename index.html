@@ -65,7 +65,7 @@
         </section>
 
         <section class="category-panel" id="panel-draw" aria-label="วาดและแก้ไขขอบเขต">
-          <div class="card"><h2><img class="inline-icon" src="assets/icons/ui-3d/draw.svg" alt="" aria-hidden="true"> วาดและแก้ไขขอบเขต</h2><p class="panel-help">บนมือถือ กด + แล้วเลือกวาดขอบเขต เลื่อนแผนที่ให้กากบาทตรงมุมแปลงแล้วกด + เพื่อปักจุด เมื่อครบอย่างน้อย 3 จุด กด ✓ เพื่อปิดและบันทึกแนวเขต การแก้ไขหรือลบขอบเขตจะล้างจุดปลูกเดิมเพื่อป้องกันข้อมูลไม่ตรงกัน</p><div class="tool-tip">ระยะของช่วงล่าสุดจะแสดงระหว่างวาด และกด “ย้อนจุด” เพื่อแก้ตำแหน่งที่ปักพลาดได้</div></div>
+          <div class="card"><h2><img class="inline-icon" src="assets/icons/ui-3d/draw.svg" alt="" aria-hidden="true"> วาดและแก้ไขขอบเขต</h2><p class="panel-help">บนมือถือ กด + แล้วเลือกวาดขอบเขต เลื่อนแผนที่ให้กากบาทตรงมุมแปลงแล้วกด + เพื่อปักและเพิ่มมุมได้เรื่อย ๆ แล้วกดปุ่ม ✓ บันทึกเมื่อครบทุกมุม (อย่างน้อย 3 จุด) การแก้ไขหรือลบขอบเขตจะล้างจุดปลูกเดิมเพื่อป้องกันข้อมูลไม่ตรงกัน</p><div class="tool-tip">ระยะของช่วงล่าสุดจะแสดงระหว่างวาด และกด “ย้อนจุด” เพื่อแก้ตำแหน่งที่ปักพลาดได้</div></div>
         </section>
 
         <section class="category-panel" id="panel-plant" aria-label="สรุปและแก้ไขจุดปลูก">
@@ -114,7 +114,7 @@
     <div id="mapMeasureBadge" class="map-measure-badge" aria-live="polite" hidden>
       <strong id="mapSegmentDistance">ช่วงล่าสุด 0 ม.</strong><span id="mapBoundaryHint">เลื่อนแผนที่แล้วแตะ + เพื่อปักจุด</span>
     </div>
-    <div class="map-boundary-tools"><button id="mapBoundaryCancel" type="button">× ยกเลิก</button><button id="mapBoundaryUndo" type="button" aria-label="ย้อนจุดขอบเขตล่าสุด" hidden>↶ ย้อนจุด</button></div>
+    <div class="map-boundary-tools"><button id="mapBoundaryCancel" type="button">× ยกเลิก</button><button id="mapBoundaryUndo" type="button" aria-label="ย้อนจุดขอบเขตล่าสุด" hidden>↶ ย้อนจุด</button><button id="mapBoundaryFinish" type="button" aria-label="บันทึกขอบเขตแปลง" hidden>✓ บันทึก</button></div>
     <div class="map-compass" role="img" aria-label="ทิศเหนืออยู่ด้านบนของแผนที่" title="ทิศเหนืออยู่ด้านบนเสมอ">
       <span>N</span><img src="assets/icons/ui-3d/north-arrow.svg" alt="">
     </div>
