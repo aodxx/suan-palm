@@ -82,6 +82,9 @@ map.addControl(new L.Control.Draw({
 // ---------- องค์ประกอบ UI ----------
 const $ = id => document.getElementById(id);
 const statusEl = $('status');
+let desktopDrawing = false;      // กำลังวาดด้วยเครื่องมือ Leaflet.draw บนเดสก์ท็อป
+let flowBadCursor = 0;          // ลำดับจุดสีแดงที่กำลังพาไปดู
+let flowLastStage = '';         // ใช้ทำแอนิเมชันเมื่อเปลี่ยนขั้นตอน
 function setStatus(text, cls) { statusEl.textContent = text; statusEl.className = cls || ''; }
 
 function activateCategory(name, focus = false) {
@@ -149,6 +152,7 @@ function updateWorkflow() {
       mobileAction.dataset.action = 'review';
     }
   }
+  updateMapFlow();
 }
 
 function updateMapSummary() {
@@ -513,6 +517,7 @@ function renderMobileBoundaryPoints() {
     mapPrimaryAction.title = 'เลื่อนแผนที่และกด + เพื่อเพิ่มจุด';
   }
   updateMobileMeasurePreview();
+  updateMapFlow();
 }
 
 function startMobileBoundary(kind = 'boundary') {
@@ -563,6 +568,7 @@ function stopMobileBoundary() {
   }
   mobileBoundaryKind = 'boundary';
   updateMapSummary();
+  updateMapFlow();
 }
 
 function addMobileBoundaryPoint() {
@@ -574,7 +580,7 @@ function addMobileBoundaryPoint() {
   }
   mobileBoundaryPoints.push(L.latLng(center.lat, center.lng));
   renderMobileBoundaryPoints();
-  setStatus('ปักจุดที่ ' + mobileBoundaryPoints.length + ' แล้ว · เลื่อนแผนที่ไปยังมุมถัดไป', 'ok');
+  setStatus('ปักจุดที่ ' + mobileBoundaryPoints.length + ' แล้ว · ' + (mobileBoundaryPoints.length < 3 ? 'เลื่อนแผนที่ไปยังมุมถัดไป' : 'ปักต่อหรือกด ✓ บันทึก'), 'ok');
 }
 
 function undoMobileBoundaryPoint() {
@@ -981,6 +987,9 @@ function generateGrid() {
   const costText = price !== null ? ' ค่าต้นกล้าประมาณ ' + formatBaht(price * trees.length) : '';
   saveDraft();
   activateCategory('plant');
+  if (usesMobileMapUI() && document.body.dataset.mobileView !== 'map') setMobileView('map');
+  flowBadCursor = 0;
+  fitToPlot();
   setStatus('✅ สร้างจุดปลูกสำเร็จทั้งหมด ' + trees.length.toLocaleString('th-TH') + ' ต้น (ระยะห่าง ' + spacing.toFixed(1) + ' เมตร).' + costText, 'ok');
 }
 
@@ -1046,8 +1055,160 @@ function recheckAll() {
   }
   if (n) setStatus('⚠️ พบ ' + n + ' ต้นที่อยู่ใกล้กันเกินไป (น้อยกว่า 9 เมตร) จุดเหล่านี้จะแสดงเป็นสีแดง', 'warn');
   else setStatus('ทุกต้นห่างกันอย่างน้อย 9 ม. (รวม ' + trees.length.toLocaleString('th-TH') + ' ต้น)', 'ok');
+  flowBadCursor = 0;
+  updateMapFlow();
 }
 
+
+
+// ---------- แถบขั้นตอนต่อเนื่อง: วาดแปลง → ดูพื้นที่ → สร้างจุดปลูก → ตรวจจำนวนจริง ----------
+function startBoundaryDraw() {
+  if (usesMobileMapUI()) startMobileBoundary();
+  else document.querySelector('.leaflet-draw-draw-polygon')?.click();
+}
+
+function fitToPlot() {
+  const layers = drawnItems.getLayers();
+  if (!layers.length) return;
+  const mobile = usesMobileMapUI();
+  map.fitBounds(layers[0].getBounds(), {
+    paddingTopLeft: [24, mobile ? 130 : 48],
+    paddingBottomRight: [24, mobile ? 210 : 120],
+    maxZoom: 19
+  });
+}
+
+function goToPlotName() {
+  if (usesMobileMapUI()) setMobileView('tools');
+  setTimeout(() => {
+    $('plotName').scrollIntoView({ block: 'center' });
+    $('plotName').focus();
+  }, 60);
+}
+
+function goToReport() {
+  if (usesMobileMapUI()) {
+    setMobileView('report');
+    setStatus('พร้อมส่งออกรายงานแล้ว', 'ok');
+  } else {
+    $('panel-report').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('btnPDF').focus({ preventScroll: true });
+  }
+}
+
+function goToNextBadTree() {
+  const bad = trees.filter(t => t.bad);
+  if (!bad.length) return;
+  flowBadCursor = flowBadCursor % bad.length;
+  const target = bad[flowBadCursor++];
+  map.flyTo(target.marker.getLatLng(), Math.max(map.getZoom(), 19), { duration: 0.6 });
+  setStatus('จุดแดงที่ ' + flowBadCursor + '/' + bad.length + ' · ลากให้ห่างต้นข้างเคียงอย่างน้อย ' + lastGeneratedSpacing.toFixed(1) + ' ม.', 'warn');
+}
+
+function updateMapFlow() {
+  const card = $('mapFlow');
+  if (!card) return;
+  const mobileDrawing = mobileBoundaryMode && mobileBoundaryKind === 'boundary';
+  if (mobileBoundaryMode && mobileBoundaryKind === 'measure') { card.hidden = true; return; }
+  card.hidden = false;
+  const hasBoundary = Boolean(currentFeature);
+  const hasTrees = trees.length > 0;
+  const title = $('mapFlowTitle'), detail = $('mapFlowDetail');
+  const cta = $('mapFlowCta'), second = $('mapFlowSecondary');
+  let stage = 'draw', action = 'draw', current = 0;
+  second.hidden = true;
+  cta.hidden = false;
+  cta.disabled = false;
+
+  if (mobileDrawing) {
+    const n = mobileBoundaryPoints.length;
+    title.textContent = 'วาดขอบเขต · ปักแล้ว ' + n + ' จุด';
+    if (n < 3) {
+      detail.textContent = 'เลื่อนแผนที่ให้กากบาทตรงมุมแปลง แล้วกด + ที่มุมถัดไป';
+      cta.textContent = 'ปักอีก ' + (3 - n) + ' จุดเพื่อบันทึก';
+      cta.disabled = true;
+    } else {
+      detail.textContent = 'ปักมุมเพิ่มได้ หรือกดบันทึกเพื่อดูพื้นที่ทันที';
+      cta.textContent = '✓ บันทึกขอบเขต';
+    }
+    action = 'finish-draw';
+  } else if (desktopDrawing) {
+    title.textContent = 'กำลังวาดขอบเขต';
+    detail.textContent = 'คลิกทีละมุมแปลง แล้วคลิกจุดแรกอีกครั้งเพื่อปิดขอบเขต';
+    cta.hidden = true;
+    action = 'none';
+  } else if (!hasBoundary) {
+    title.textContent = 'เริ่มจากวาดขอบเขตแปลง';
+    detail.textContent = 'ปักมุมแปลงบนแผนที่ ระบบจะคำนวณพื้นที่ให้ทันที';
+    cta.textContent = 'วาดขอบเขตแปลง';
+  } else if (!hasTrees) {
+    stage = 'area'; current = 1; action = 'generate';
+    const { rai, ngan, wa } = m2ToThaiArea(currentAreaM2);
+    const est = Math.floor(currentAreaM2 / getSpacingMetrics().areaPerTree);
+    title.textContent = 'พื้นที่ ' + rai + ' ไร่ ' + ngan + ' งาน ' + wa.toFixed(0) + ' ตร.ว.';
+    detail.textContent = 'ประมาณ ' + est.toLocaleString('th-TH') + ' ต้น ที่ระยะ ' + getConfiguredSpacing().toFixed(1) + ' ม.';
+    cta.textContent = '🌴 สร้างจุดปลูก';
+    second.hidden = false;
+  } else {
+    stage = 'check'; current = 3;
+    const rai = currentAreaM2 / RAI_M2;
+    const density = rai > 0 ? (trees.length / rai).toFixed(1) : '–';
+    const est = Math.floor(currentAreaM2 / getSpacingMetrics().areaPerTree);
+    const bad = trees.filter(t => t.bad).length;
+    const diff = trees.length - est;
+    title.textContent = 'จำนวนจริง ' + trees.length.toLocaleString('th-TH') + ' ต้น · ' + density + ' ต้น/ไร่';
+    if (bad) {
+      detail.textContent = '⚠ ใกล้กันเกินไป ' + bad.toLocaleString('th-TH') + ' จุด (สีแดง) · ลากแก้ได้บนแผนที่';
+      cta.textContent = 'ไปดูจุดสีแดง';
+      action = 'bad';
+    } else {
+      detail.textContent = '✓ ทุกต้นห่างพอ · ต่างจากสูตร ' + (diff >= 0 ? '+' : '') + diff.toLocaleString('th-TH') + ' ต้น (แตะจุดเพื่อลบ/ลากปรับ)';
+      if (!($('plotName').value || '').trim()) {
+        cta.textContent = 'ตั้งชื่อแปลงเพื่อออกรายงาน';
+        action = 'name';
+      } else {
+        cta.textContent = '▤ ส่งออกรายงาน';
+        action = 'report';
+      }
+    }
+  }
+  cta.dataset.action = action;
+  card.dataset.stage = stage;
+  card.querySelectorAll('[data-flow-step]').forEach((step, index) => {
+    const order = ['draw', 'area', 'plant', 'check'];
+    const doneUpTo = mobileDrawing || desktopDrawing ? 0 : !hasBoundary ? 0 : !hasTrees ? 1 : 3;
+    step.classList.toggle('is-done', index < doneUpTo);
+    step.classList.toggle('is-current', index === (mobileDrawing || desktopDrawing ? 0 : current));
+    step.setAttribute('aria-current', index === (mobileDrawing || desktopDrawing ? 0 : current) ? 'step' : 'false');
+    void order;
+  });
+  if (stage !== flowLastStage) {
+    flowLastStage = stage;
+    card.classList.remove('flow-pop');
+    void card.offsetWidth;
+    card.classList.add('flow-pop');
+  }
+}
+
+$('mapFlowCta')?.addEventListener('click', () => {
+  switch ($('mapFlowCta').dataset.action) {
+    case 'draw': startBoundaryDraw(); break;
+    case 'finish-draw': finishMobileBoundary(); break;
+    case 'generate': $('btnGenerate').click(); break;
+    case 'bad': goToNextBadTree(); break;
+    case 'name': goToPlotName(); break;
+    case 'report': goToReport(); break;
+  }
+});
+$('mapFlowSecondary')?.addEventListener('click', () => {
+  if (usesMobileMapUI()) setMobileView('tools');
+  setTimeout(() => {
+    $('panel-settings').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('spacing').focus({ preventScroll: true });
+  }, 60);
+});
+map.on(L.Draw.Event.DRAWSTART, e => { if (e.layerType === 'polygon') { desktopDrawing = true; updateMapFlow(); } });
+map.on(L.Draw.Event.DRAWSTOP, () => { desktopDrawing = false; updateMapFlow(); });
 
 // ---------- เหตุการณ์ ----------
 if ($('sheetToggle')) $('sheetToggle').addEventListener('click', toggleSheet);
@@ -1131,7 +1292,8 @@ if ($('mapMeasureAction')) $('mapMeasureAction').addEventListener('click', () =>
 if ($('mapPlantAction')) $('mapPlantAction').addEventListener('click', () => {
   closeMapActionMenu({ restoreFocus: true });
   if ($('btnGenerate').disabled) {
-    setStatus('วาดขอบเขตแปลงก่อน แล้วจึงสร้างจุดปลูกได้', 'warn');
+    setStatus('ยังไม่มีขอบเขตแปลง · เริ่มวาดให้เลย แล้วระบบจะนำไปขั้นตอนสร้างจุดปลูกต่อ', 'ok');
+    startBoundaryDraw();
     return;
   }
   $('btnGenerate').click();
@@ -1296,7 +1458,9 @@ map.on(L.Draw.Event.CREATED, e => {
   drawnItems.addLayer(e.layer);
   updateArea();
   saveDraft();
-  setStatus('กดปุ่ม "🌴 สร้างจุดปลูกปาล์ม" เพื่อสร้างจุดปลูก');
+  fitToPlot();
+  const areaText = m2ToThaiArea(currentAreaM2);
+  setStatus('พื้นที่ ' + areaText.rai + ' ไร่ ' + areaText.ngan + ' งาน · กด "สร้างจุดปลูก" ได้เลย', 'ok');
 });
 map.on(L.Draw.Event.EDITED, () => {
   clearGrid(); updateArea();
