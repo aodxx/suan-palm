@@ -123,7 +123,7 @@ test('CSS keeps shared icon sizing and no sidebar sheet/dock in one-page mobile 
 });
 
 test('map workflow supports crosshair boundary placement and separate app destinations', () => {
-  for (const id of ['mapAreaSummary', 'mapTreeSummary', 'mapPerimeterSummary', 'mapPerimeterLabel', 'mapCrosshair', 'mapMeasureBadge', 'mapLocateAction', 'mapLayersAction', 'mapLayerSheet', 'mapLayerScrim', 'mapLayerClose', 'mapPrimaryAction', 'mapActionMenu', 'mapDrawAction', 'mapMeasureAction', 'mapPlantAction', 'mapPlotPinAction', 'mapBoundaryUndo', 'mapBoundaryCancel', 'mapToolsShortcut', 'mapReportShortcut']) {
+  for (const id of ['mapAreaSummary', 'mapTreeSummary', 'mapPerimeterSummary', 'mapPerimeterLabel', 'mapCrosshair', 'mapMeasureBadge', 'mapLocateAction', 'mapLayersAction', 'mapLayerSheet', 'mapLayerScrim', 'mapLayerClose', 'mapPrimaryAction', 'mapActionMenu', 'mapActionArea', 'mapActionBackdrop', 'mapDrawAction', 'mapMeasureAction', 'mapPlantAction', 'mapPlotPinAction', 'mapBoundaryUndo', 'mapBoundaryCancel', 'mapToolsShortcut', 'mapReportShortcut']) {
     assert.match(html, new RegExp(`id="${id}"`), `missing map control #${id}`);
   }
   assert.match(css, /\.map-ui\.is-drawing \.map-crosshair\s*\{\s*display:\s*block/);
@@ -165,4 +165,27 @@ test('mobile map provides an explicit north-up indicator and user-initiated came
   assert.match(app, /cameraPhotoMarkers\.length\) && !confirm/);
   assert.match(app, /function clearCameraPhotoMarkers\(/);
   assert.match(app, /URL\.revokeObjectURL\(imageUrl\)/);
+});
+
+test('mobile primary action is centered and opens a radial menu with dim backdrop and auto-close', () => {
+  assert.match(html, /id="mapActionArea" class="map-action-area"/);
+  assert.match(html, /id="mapActionBackdrop"[^>]*aria-label="ปิดเมนูคำสั่ง"[^>]*hidden/);
+  assert.match(html, /id="mapActionMenu"[^>]*aria-hidden="true" inert/);
+  for (const icon of ['draw.svg', 'measure.svg', 'plant.svg', 'plot.svg']) {
+    assert.match(html, new RegExp(`assets/icons/ui-3d/${icon}`));
+  }
+  assert.match(css, /\.map-action-area\s*\{[^}]*left:\s*50%/);
+  assert.match(css, /#mapDrawAction\s*\{[^}]*--radial-x:/);
+  assert.match(css, /#mapMeasureAction\s*\{[^}]*--radial-y:\s*-188px/);
+  assert.match(css, /#mapMeasureAction, #mapPlantAction\s*\{\s*--radial-y:\s*-214px/);
+  assert.match(css, /\.map-action-area\s*\{\s*bottom:\s*calc\(108px/);
+  assert.match(css, /\.map-action-menu \.menu-action-label\s*\{\s*display:\s*none !important/);
+  assert.match(css, /\.map-action-area\.is-open \.map-action-menu button\s*\{[^}]*scale\(1\)/);
+  assert.match(css, /\.map-action-backdrop\.is-visible\s*\{[^}]*opacity:\s*1/);
+  const app = read('js/app.js');
+  assert.match(app, /function setMapActionMenuOpen\(open/);
+  assert.match(app, /mapActionMenu\.inert = !open/);
+  assert.match(app, /mapActionBackdrop\.addEventListener\('click'/);
+  assert.match(app, /event\.key === 'Escape'/);
+  assert.match(app, /closeMapActionMenu\(\{ restoreFocus: true \}\)/);
 });
