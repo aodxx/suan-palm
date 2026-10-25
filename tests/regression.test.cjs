@@ -167,7 +167,7 @@ test('mobile map provides an explicit north-up indicator and user-initiated came
   assert.match(app, /URL\.revokeObjectURL\(imageUrl\)/);
 });
 
-test('mobile primary action opens a compact balanced two-row menu with dim backdrop and auto-close', () => {
+test('mobile primary action expands four round actions in a staggered semicircle with dim backdrop and auto-close', () => {
   assert.match(html, /id="mapActionArea" class="map-action-area"/);
   assert.match(html, /id="mapActionBackdrop"[^>]*aria-label="ปิดเมนูคำสั่ง"[^>]*hidden/);
   assert.match(html, /id="mapActionMenu"[^>]*aria-hidden="true" inert/);
@@ -175,13 +175,15 @@ test('mobile primary action opens a compact balanced two-row menu with dim backd
     assert.match(html, new RegExp(`assets/icons/ui-3d/${icon}`));
   }
   assert.match(css, /\.map-action-area\s*\{[^}]*left:\s*50%/);
-  assert.match(css, /--menu-column:\s*clamp\(46px,\s*14vw,\s*54px\)/);
-  assert.match(css, /#mapDrawAction\s*\{[^}]*--radial-x:\s*calc\(-1 \* var\(--menu-column\)\);[^}]*--radial-y:\s*-82px/);
-  assert.match(css, /#mapMeasureAction\s*\{[^}]*--radial-x:\s*calc\(-1 \* var\(--menu-column\)\);[^}]*--radial-y:\s*-154px/);
-  assert.match(css, /#mapPlantAction\s*\{[^}]*--radial-x:\s*var\(--menu-column\);[^}]*--radial-y:\s*-154px/);
-  assert.match(css, /#mapPlotPinAction\s*\{[^}]*--radial-x:\s*var\(--menu-column\);[^}]*--radial-y:\s*-82px/);
-  assert.doesNotMatch(css, /--radial-side:\s*clamp\(88px,\s*28vw,\s*110px\)/);
-  assert.doesNotMatch(css, /--radial-y:\s*-214px/);
+  assert.match(css, /--radial-outer-x:\s*clamp\(78px,\s*30vw,\s*104px\)/);
+  assert.match(css, /--radial-inner-x:\s*clamp\(45px,\s*16vw,\s*58px\)/);
+  assert.match(css, /#mapDrawAction\s*\{[^}]*--radial-x:\s*calc\(-1 \* var\(--radial-outer-x\)\);[^}]*--radial-y:\s*var\(--radial-outer-y\)/);
+  assert.match(css, /#mapMeasureAction\s*\{[^}]*--radial-x:\s*calc\(-1 \* var\(--radial-inner-x\)\);[^}]*--radial-y:\s*var\(--radial-inner-y\)/);
+  assert.match(css, /#mapPlantAction\s*\{[^}]*--radial-x:\s*var\(--radial-inner-x\);[^}]*--radial-y:\s*var\(--radial-inner-y\)/);
+  assert.match(css, /#mapPlotPinAction\s*\{[^}]*--radial-x:\s*var\(--radial-outer-x\);[^}]*--radial-y:\s*var\(--radial-outer-y\)/);
+  assert.match(css, /transform:\s*translate\(calc\(-50% - var\(--radial-x\)\), calc\(-50% - var\(--radial-y\)\)\) scale\(\.24\)/);
+  assert.match(css, /transition:\s*opacity \.16s ease, transform \.38s cubic-bezier/);
+  assert.match(css, /--radial-delay:\s*120ms/);
   assert.match(css, /\.map-action-area\s*\{\s*bottom:\s*calc\(108px/);
   assert.match(css, /\.map-action-menu \.menu-action-label\s*\{\s*display:\s*none !important/);
   assert.match(css, /\.map-action-area\.is-open \.map-action-menu button\s*\{[^}]*scale\(1\)/);
@@ -206,9 +208,11 @@ test('map submenu actions connect drawing, measurement, planting and plot-center
   assert.match(app, /if \(\$\('mapPlotPinAction'\)\)[\s\S]*?savePlotLocation\(map\.getCenter\(\)\)[\s\S]*?\$\('btnPickPlot'\)\.click\(\)/);
 });
 
-test('small portrait screens use labeled tap-friendly menu cards instead of floating tiny captions', () => {
-  assert.match(css, /@media \(max-width: 380px\) and \(orientation: portrait\)\s*\{[\s\S]*?#mapDrawAction, #mapMeasureAction, #mapPlantAction, #mapPlotPinAction\s*\{[^}]*width:\s*78px;[^}]*height:\s*68px;[^}]*min-height:\s*68px/);
-  assert.match(css, /@media \(max-width: 380px\) and \(orientation: portrait\)[\s\S]*?\.map-action-menu \.menu-action-icon\s*\{[^}]*top:\s*5px;[^}]*width:\s*28px;[^}]*height:\s*28px/);
-  assert.match(css, /@media \(max-width: 380px\) and \(orientation: portrait\)[\s\S]*?\.map-action-menu \.menu-action-label\s*\{[^}]*top:\s*auto;[^}]*bottom:\s*4px;[^}]*width:\s*calc\(100% - 8px\);[^}]*white-space:\s*normal/);
-  assert.match(css, /@media \(max-width: 380px\) and \(orientation: portrait\)[\s\S]*?#mapMeasureAction, #mapPlantAction\s*\{[^}]*--radial-y:\s*-164px/);
+test('small portrait screens keep the four circular menu actions compact and accessible', () => {
+  assert.match(css, /@media \(max-width: 380px\) and \(orientation: portrait\)[\s\S]*?--radial-outer-x:\s*clamp\(78px,\s*30vw,\s*104px\)/);
+  assert.match(css, /\.map-action-menu button\s*\{[^}]*width:\s*58px;[^}]*height:\s*58px;[^}]*border-radius:\s*50%/);
+  assert.match(css, /@media \(max-width: 380px\) and \(orientation: portrait\)[\s\S]*?\.map-action-menu \.menu-action-label\s*\{\s*display:\s*none !important/);
+  for (const id of ['mapDrawAction', 'mapMeasureAction', 'mapPlantAction', 'mapPlotPinAction']) {
+    assert.match(html, new RegExp(`id="${id}"[^>]*aria-label="[^"]+"`));
+  }
 });
