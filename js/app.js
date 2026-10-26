@@ -1105,6 +1105,18 @@ function goToNextBadTree() {
   setStatus('จุดแดงที่ ' + flowBadCursor + '/' + bad.length + ' · ลากให้ห่างต้นข้างเคียงอย่างน้อย ' + lastGeneratedSpacing.toFixed(1) + ' ม.', 'warn');
 }
 
+let flowCollapseTimer = null;
+function setFlowExpanded(open, { auto = false } = {}) {
+  const card = $('mapFlow'), panel = $('mapFlowPanel'), toggle = $('mapFlowToggle');
+  if (!card || !panel || !toggle) return;
+  if (flowCollapseTimer) { clearTimeout(flowCollapseTimer); flowCollapseTimer = null; }
+  card.classList.toggle('is-collapsed', !open);
+  panel.hidden = !open;
+  toggle.setAttribute('aria-expanded', String(open));
+  // เปิดอัตโนมัติชั่วคราวเมื่อขั้นตอนเปลี่ยน แล้วพับเก็บเองเพื่อไม่บังแผนที่
+  if (open && auto) flowCollapseTimer = setTimeout(() => setFlowExpanded(false), 6000);
+}
+
 function updateMapFlow() {
   const card = $('mapFlow');
   if (!card) return;
@@ -1115,24 +1127,26 @@ function updateMapFlow() {
   const hasTrees = trees.length > 0;
   const title = $('mapFlowTitle'), detail = $('mapFlowDetail');
   const cta = $('mapFlowCta'), second = $('mapFlowSecondary');
-  let stage = 'draw', action = 'draw', current = 0;
+  let stage = 'draw', action = 'draw', current = 0, count = '1/4', short = 'วาดแปลง';
   second.hidden = true;
   cta.hidden = false;
   cta.disabled = false;
 
   if (mobileDrawing) {
     const n = mobileBoundaryPoints.length;
-    title.textContent = 'วาดขอบเขต · ปักแล้ว ' + n + ' จุด';
+    short = 'ปักแล้ว ' + n + ' มุม';
+    title.textContent = 'วาดขอบเขต · ปักแล้ว ' + n + ' มุม';
     if (n < 3) {
-      detail.textContent = 'เลื่อนแผนที่ให้กากบาทตรงมุมแปลง แล้วกด + ที่มุมถัดไป';
-      cta.textContent = n === 0 ? 'ปักมุมแรกที่กากบาท' : 'ปักมุมต่อไป (ครบอย่างน้อย 3 มุมจึงบันทึกได้)';
+      detail.textContent = 'เลื่อนแผนที่ให้กากบาทตรงมุมแปลง แล้วกด + ปักมุมต่อไป (ครบอย่างน้อย 3 มุมจึงบันทึกได้)';
+      cta.textContent = 'ปักต่อ';
       cta.disabled = true;
     } else {
       detail.textContent = 'ปักมุมเพิ่มได้ไม่จำกัด ตามรูปร่างแปลงจริง หรือกดบันทึกเพื่อดูพื้นที่ทันที';
-      cta.textContent = '✓ บันทึกขอบเขต';
+      cta.textContent = '✓ บันทึก';
     }
     action = 'finish-draw';
   } else if (desktopDrawing) {
+    short = 'กำลังวาด';
     title.textContent = 'กำลังวาดขอบเขต';
     detail.textContent = 'คลิกทีละมุมแปลง แล้วคลิกจุดแรกอีกครั้งเพื่อปิดขอบเขต';
     cta.hidden = true;
@@ -1140,31 +1154,33 @@ function updateMapFlow() {
   } else if (!hasBoundary) {
     title.textContent = 'เริ่มจากวาดขอบเขตแปลง';
     detail.textContent = 'ปักมุมแปลงบนแผนที่ ระบบจะคำนวณพื้นที่ให้ทันที';
-    cta.textContent = 'วาดขอบเขตแปลง';
+    cta.textContent = 'เริ่มวาด';
   } else if (!hasTrees) {
-    stage = 'area'; current = 1; action = 'generate';
+    stage = 'area'; current = 1; action = 'generate'; count = '2/4';
     const { rai, ngan, wa } = m2ToThaiArea(currentAreaM2);
     const est = Math.floor(currentAreaM2 / getSpacingMetrics().areaPerTree);
+    short = rai + ' ไร่ ' + ngan + ' งาน';
     title.textContent = 'พื้นที่ ' + rai + ' ไร่ ' + ngan + ' งาน ' + wa.toFixed(0) + ' ตร.ว.';
     detail.textContent = 'ประมาณ ' + est.toLocaleString('th-TH') + ' ต้น ที่ระยะ ' + getConfiguredSpacing().toFixed(1) + ' ม.';
     cta.textContent = '🌴 สร้างจุดปลูก';
     second.hidden = false;
   } else {
-    stage = 'check'; current = 3;
+    stage = 'check'; current = 3; count = '4/4';
     const rai = currentAreaM2 / RAI_M2;
     const density = rai > 0 ? (trees.length / rai).toFixed(1) : '–';
     const est = Math.floor(currentAreaM2 / getSpacingMetrics().areaPerTree);
     const bad = trees.filter(t => t.bad).length;
     const diff = trees.length - est;
+    short = trees.length.toLocaleString('th-TH') + ' ต้น' + (bad ? ' · ⚠ ' + bad : '');
     title.textContent = 'จำนวนจริง ' + trees.length.toLocaleString('th-TH') + ' ต้น · ' + density + ' ต้น/ไร่';
     if (bad) {
       detail.textContent = '⚠ ใกล้กันเกินไป ' + bad.toLocaleString('th-TH') + ' จุด (สีแดง) · ลากแก้ได้บนแผนที่';
-      cta.textContent = 'ไปดูจุดสีแดง';
+      cta.textContent = 'ดูจุดแดง';
       action = 'bad';
     } else {
       detail.textContent = '✓ ทุกต้นห่างพอ · ต่างจากสูตร ' + (diff >= 0 ? '+' : '') + diff.toLocaleString('th-TH') + ' ต้น (แตะจุดเพื่อลบ/ลากปรับ)';
       if (!($('plotName').value || '').trim()) {
-        cta.textContent = 'ตั้งชื่อแปลงเพื่อออกรายงาน';
+        cta.textContent = 'ตั้งชื่อแปลง';
         action = 'name';
       } else {
         cta.textContent = '▤ ส่งออกรายงาน';
@@ -1172,25 +1188,36 @@ function updateMapFlow() {
       }
     }
   }
+  $('mapFlowCount').textContent = count;
+  $('mapFlowShort').textContent = short;
   cta.dataset.action = action;
   card.dataset.stage = stage;
+  const drawing = mobileDrawing || desktopDrawing;
   card.querySelectorAll('[data-flow-step]').forEach((step, index) => {
-    const order = ['draw', 'area', 'plant', 'check'];
-    const doneUpTo = mobileDrawing || desktopDrawing ? 0 : !hasBoundary ? 0 : !hasTrees ? 1 : 3;
+    const doneUpTo = drawing || !hasBoundary ? 0 : !hasTrees ? 1 : 3;
+    const isCurrent = index === (drawing ? 0 : current);
     step.classList.toggle('is-done', index < doneUpTo);
-    step.classList.toggle('is-current', index === (mobileDrawing || desktopDrawing ? 0 : current));
-    step.setAttribute('aria-current', index === (mobileDrawing || desktopDrawing ? 0 : current) ? 'step' : 'false');
-    void order;
+    step.classList.toggle('is-current', isCurrent);
+    step.setAttribute('aria-current', isCurrent ? 'step' : 'false');
   });
   if (stage !== flowLastStage) {
+    const first = flowLastStage === '';
     flowLastStage = stage;
     card.classList.remove('flow-pop');
     void card.offsetWidth;
     card.classList.add('flow-pop');
+    if (!first && !drawing) setFlowExpanded(true, { auto: true });
   }
+  if (drawing) setFlowExpanded(false);
 }
 
+$('mapFlowToggle')?.addEventListener('click', () => setFlowExpanded($('mapFlowPanel').hidden));
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && !$('mapFlowPanel')?.hidden) setFlowExpanded(false);
+});
+map.on('click movestart', () => { if (!$('mapFlowPanel')?.hidden) setFlowExpanded(false); });
 $('mapFlowCta')?.addEventListener('click', () => {
+  setFlowExpanded(false);
   switch ($('mapFlowCta').dataset.action) {
     case 'draw': startBoundaryDraw(); break;
     case 'finish-draw': finishMobileBoundary(); break;
@@ -1201,6 +1228,7 @@ $('mapFlowCta')?.addEventListener('click', () => {
   }
 });
 $('mapFlowSecondary')?.addEventListener('click', () => {
+  setFlowExpanded(false);
   if (usesMobileMapUI()) setMobileView('tools');
   setTimeout(() => {
     $('panel-settings').scrollIntoView({ behavior: 'smooth', block: 'start' });

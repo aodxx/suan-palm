@@ -262,7 +262,7 @@ test('guided main flow card connects draw -> area -> plant -> check with one nex
   assert.match(app, /startBoundaryDraw\(\);\s*return;/);
   assert.match(css, /\.map-flow\s*\{/);
   assert.match(css, /body\[data-mobile-view="tools"\] \.map-flow/);
-  assert.match(css, /\.map-flow\.flow-pop\s*\{\s*animation: none/);
+  assert.match(css, /\.map-flow\.flow-pop \.flow-chip\s*\{\s*animation: none/);
 });
 
 test('boundary drawing has no upper vertex limit on mobile or desktop', () => {
@@ -272,4 +272,15 @@ test('boundary drawing has no upper vertex limit on mobile or desktop', () => {
   assert.doesNotMatch(app, /MAX_(VERTEX|VERTICES|BOUNDARY)/i);
   assert.match(app, /turf\.kinks\(currentFeature\)/);
   assert.match(html, /ปักกี่มุมก็ได้/);
+});
+
+test('flow card is a collapsed chip by default, expands on demand and auto-collapses', () => {
+  const app = read('js/app.js');
+  assert.match(html, /<section id="mapFlow" class="map-flow is-collapsed"/);
+  assert.match(html, /id="mapFlowPanel" class="flow-panel" hidden/);
+  assert.match(html, /id="mapFlowToggle"[^>]*aria-expanded="false"[^>]*aria-controls="mapFlowPanel"/);
+  assert.match(app, /function setFlowExpanded\(/);
+  assert.match(app, /setTimeout\(\(\) => setFlowExpanded\(false\), 6000\)/);
+  assert.match(app, /map\.on\('click movestart'/);
+  assert.match(css, /\.flow-panel\s*\{[^}]*position:\s*absolute/);
 });

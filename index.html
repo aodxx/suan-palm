@@ -145,16 +145,20 @@
       </div>
     </section>
   </section>
-  <section id="mapFlow" class="map-flow" data-stage="draw" aria-label="ขั้นตอนถัดไป" aria-live="polite">
-    <ol class="flow-steps" aria-label="ความคืบหน้างานหลัก">
-      <li data-flow-step="draw"><b>1</b><span>วาดแปลง</span></li>
-      <li data-flow-step="area"><b>2</b><span>ดูพื้นที่</span></li>
-      <li data-flow-step="plant"><b>3</b><span>จุดปลูก</span></li>
-      <li data-flow-step="check"><b>4</b><span>ตรวจจำนวน</span></li>
-    </ol>
-    <div class="flow-body">
-      <div class="flow-text"><strong id="mapFlowTitle">เริ่มจากวาดขอบเขตแปลง</strong><span id="mapFlowDetail">ปักมุมแปลงบนแผนที่ ระบบจะคำนวณพื้นที่ให้ทันที</span></div>
-      <div class="flow-actions"><button id="mapFlowCta" class="flow-cta" type="button">วาดขอบเขตแปลง</button><button id="mapFlowSecondary" class="flow-secondary" type="button" hidden>ตั้งค่าระยะปลูก</button></div>
+  <section id="mapFlow" class="map-flow is-collapsed" data-stage="draw" aria-label="ขั้นตอนถัดไป">
+    <div id="mapFlowPanel" class="flow-panel" hidden>
+      <ol class="flow-steps" aria-label="ความคืบหน้างานหลัก">
+        <li data-flow-step="draw"><b>1</b><span>วาดแปลง</span></li>
+        <li data-flow-step="area"><b>2</b><span>ดูพื้นที่</span></li>
+        <li data-flow-step="plant"><b>3</b><span>จุดปลูก</span></li>
+        <li data-flow-step="check"><b>4</b><span>ตรวจจำนวน</span></li>
+      </ol>
+      <div class="flow-text" aria-live="polite"><strong id="mapFlowTitle">เริ่มจากวาดขอบเขตแปลง</strong><span id="mapFlowDetail">ปักมุมแปลงบนแผนที่ ระบบจะคำนวณพื้นที่ให้ทันที</span></div>
+      <button id="mapFlowSecondary" class="flow-secondary" type="button" hidden>ตั้งค่าระยะปลูก</button>
+    </div>
+    <div class="flow-chip">
+      <button id="mapFlowToggle" class="flow-toggle" type="button" aria-expanded="false" aria-controls="mapFlowPanel" title="ดูขั้นตอนและรายละเอียด"><b id="mapFlowCount">1/4</b><span id="mapFlowShort">วาดแปลง</span><i aria-hidden="true">▴</i></button>
+      <button id="mapFlowCta" class="flow-cta" type="button">เริ่มวาด</button>
     </div>
   </section>
   <nav class="map-bottom-nav" aria-label="หน้าหลัก">
