@@ -180,44 +180,9 @@ function setStatus(text, cls, opts = {}) {
   if (cls === 'warn' && opts.toast !== false) showMapToast(text, 'warn');
 }
 
-function activateCategory(name, focus = false) {
-  const tab = document.querySelector('.category-tab[data-panel="' + name + '"]');
-  const panel = document.getElementById('panel-' + name);
-  if (!tab || !panel) return;
-  document.querySelectorAll('.category-tab').forEach(item => {
-    const selected = item === tab;
-    item.classList.toggle('is-active', selected);
-    item.setAttribute('aria-selected', String(selected));
-    item.tabIndex = selected ? 0 : -1;
-  });
-  document.querySelectorAll('.category-panel').forEach(item => {
-    const selected = item === panel;
-    item.hidden = !selected;
-    item.classList.toggle('is-active', selected);
-  });
-  if (focus) tab.focus();
-  requestAnimationFrame(() => map.invalidateSize({ animate: false }));
-}
-
 function updateWorkflow() {
-  const hasName = Boolean(($('plotName')?.value || '').trim());
   const hasBoundary = Boolean(currentFeature);
   const hasTrees = trees.length > 0;
-  const complete = [hasName, hasBoundary, hasTrees, hasTrees, hasTrees];
-  const currentIndex = complete.findIndex(done => !done);
-  const steps = Array.from(document.querySelectorAll('#workflowSteps [data-step]'));
-  steps.forEach((step, index) => {
-    step.classList.toggle('is-done', complete[index]);
-    step.classList.toggle('is-current', index === (currentIndex < 0 ? 4 : currentIndex));
-    step.setAttribute('aria-current', index === (currentIndex < 0 ? 4 : currentIndex) ? 'step' : 'false');
-  });
-  const hint = $('nextStepHint');
-  if (hint) {
-    hint.textContent = !hasName ? 'ขั้นตอนถัดไป: ใส่ชื่อแปลงในหมวด “แปลง” (ตำแหน่งเป็นตัวเลือก)' :
-      !hasBoundary ? 'ขั้นตอนถัดไป: ใช้เครื่องมือรูปหลายเหลี่ยมบนแผนที่เพื่อวาดขอบเขต' :
-      !hasTrees ? 'พร้อมแล้ว: กด “สร้างจุดปลูกปาล์ม” เพื่อคำนวณตำแหน่งตามระยะที่ตั้งไว้' :
-      'สร้างจุดปลูกแล้ว: ตรวจจุดบนแผนที่ แก้ไขตำแหน่ง แล้วส่งออกรายงานได้';
-  }
   const generate = $('btnGenerate');
   if (generate) {
     generate.disabled = !hasBoundary;
@@ -700,41 +665,22 @@ async function finishMobileBoundary() {
 
 // ---------- บันทึกข้อมูลแปลงไว้ในอุปกรณ์ของผู้ใช้ ----------
 const STORAGE_KEY = 'suan-palm-draft-v1';
-const SHEET_KEY = 'suan-palm-sheet-collapsed';
 let restoringDraft = false;
 
-function setSheetCollapsed(collapsed) {
-  const sidebar = $('sidebar');
-  const toggle = $('sheetToggle');
-  if (!sidebar || !toggle) return;
-  sidebar.classList.toggle('is-collapsed', collapsed);
-  toggle.setAttribute('aria-expanded', String(!collapsed));
-  $('mobileToolsToggle')?.setAttribute('aria-expanded', String(!collapsed));
-  toggle.querySelector('.sheet-toggle-label').textContent = collapsed ? 'เปิดข้อมูลแปลงและเครื่องมือ' : 'ข้อมูลแปลงและเครื่องมือ';
-  try { localStorage.setItem(SHEET_KEY, collapsed ? '1' : '0'); }
-  catch (error) { setStorageStatus('เบราว์เซอร์ปิดกั้นพื้นที่บันทึกในเครื่อง'); }
-  setTimeout(() => map.invalidateSize({ animate: false }), 260);
+// ชิป "บันทึกในเครื่องแล้ว" บนแผนที่ เพราะข้อความสถานะบันทึกอยู่ในหน้าเครื่องมือที่ซ่อนบนมือถือ
+let savedChipTimer = null;
+function flashSavedChip() {
+  const chip = $('mapSavedChip');
+  if (!chip) return;
+  chip.hidden = false;
+  chip.classList.remove('is-shown'); void chip.offsetWidth; chip.classList.add('is-shown');
+  if (savedChipTimer) clearTimeout(savedChipTimer);
+  savedChipTimer = setTimeout(() => { chip.hidden = true; }, 2200);
 }
-
-function toggleSheet() {
-  setSheetCollapsed(!$('sidebar').classList.contains('is-collapsed'));
-}
-
 function setStorageStatus(text) {
   const el = $('storageStatus');
   if (el) el.textContent = text;
 }
-
-document.querySelectorAll('.category-tab').forEach((tab, index, tabs) => {
-  tab.addEventListener('click', () => activateCategory(tab.dataset.panel));
-  tab.addEventListener('keydown', event => {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-    event.preventDefault();
-    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
-      (index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
-    activateCategory(tabs[next].dataset.panel, true);
-  });
-});
 
 function saveDraft() {
   if (restoringDraft) return;
@@ -761,6 +707,7 @@ function saveDraft() {
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
     setStorageStatus('บันทึกข้อมูลอัตโนมัติแล้วในอุปกรณ์นี้ · ' + new Date().toLocaleTimeString('th-TH'));
+    if (typeof flashSavedChip === 'function') flashSavedChip();
   } catch (error) {
     console.warn('LocalStorage save failed:', error);
     setStorageStatus('ไม่สามารถบันทึกข้อมูลในอุปกรณ์นี้ได้');
@@ -1084,7 +1031,6 @@ async function generateGrid() {
   const price = getSeedlingPrice();
   const costText = price !== null ? ' ค่าต้นกล้าประมาณ ' + formatBaht(price * trees.length) : '';
   saveDraft();
-  activateCategory('plant');
   if (usesMobileMapUI() && document.body.dataset.mobileView !== 'map') setMobileView('map');
   flowBadCursor = 0;
   fitToPlot();
@@ -1356,26 +1302,6 @@ map.on(L.Draw.Event.DRAWSTART, e => { if (e.layerType === 'polygon') { desktopDr
 map.on(L.Draw.Event.DRAWSTOP, () => { desktopDrawing = false; updateMapFlow(); });
 
 // ---------- เหตุการณ์ ----------
-if ($('sheetToggle')) $('sheetToggle').addEventListener('click', toggleSheet);
-if ($('mobileToolsToggle')) $('mobileToolsToggle').addEventListener('click', () => {
-  const collapsed = $('sidebar').classList.contains('is-collapsed');
-  setSheetCollapsed(!collapsed);
-  $('mobileToolsToggle').setAttribute('aria-expanded', String(collapsed));
-});
-if ($('mobilePrimaryAction')) $('mobilePrimaryAction').addEventListener('click', () => {
-  const action = $('mobilePrimaryAction').dataset.action;
-  if (action === 'draw') {
-    const drawButton = document.querySelector('.leaflet-draw-draw-polygon');
-    if (drawButton) drawButton.click();
-    else setStatus('ใช้เครื่องมือรูปหลายเหลี่ยมบนแผนที่เพื่อเริ่มวาดขอบเขต', 'warn');
-  } else if (action === 'generate') {
-    $('btnGenerate').click();
-  } else {
-    activateCategory('plant');
-    setSheetCollapsed(false);
-    $('mobileToolsToggle')?.setAttribute('aria-expanded', 'true');
-  }
-});
 const mapActionMenu = $('mapActionMenu');
 const mapActionArea = $('mapActionArea');
 const mapActionBackdrop = $('mapActionBackdrop');
@@ -1546,18 +1472,6 @@ map.on('zoomend', updateMobileMeasurePreview);
 document.addEventListener('click', event => {
   if (mapActionArea?.classList.contains('is-open') && !event.target.closest('.map-action-area')) closeMapActionMenu();
 });
-if (window.matchMedia('(max-width: 720px), (orientation: landscape) and (max-width: 900px)').matches) {
-  try {
-    const savedSheetState = localStorage.getItem(SHEET_KEY);
-    if (savedSheetState === '1' || savedSheetState === null) setSheetCollapsed(true);
-  }
-  catch (error) { setStorageStatus('เบราว์เซอร์ปิดกั้นการจำสถานะแผงเครื่องมือ'); }
-  map.on('click', () => {
-    if (!pickingPlotLocation && !$('sidebar').classList.contains('is-collapsed')) setSheetCollapsed(true);
-  });
-  map.on(L.Draw.Event.DRAWSTART, () => setSheetCollapsed(true));
-  map.on(L.Draw.Event.CREATED, () => setSheetCollapsed(false));
-}
 document.addEventListener('click', event => {
   const control = event.target.closest('.leaflet-draw-edit-edit, .leaflet-draw-edit-remove');
   if (!control || !trees.length) return;

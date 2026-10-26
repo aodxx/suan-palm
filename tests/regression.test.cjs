@@ -368,3 +368,35 @@ test('charm layer: friendly empty state, pop-in trees, count-up and report-ready
   assert.match(app, /function buzz[\s\S]*?try \{[\s\S]*?catch/);
   assert.match(css, /\.map-toast\.ok/);
 });
+
+test('offline support: service worker precaches the shell, manifest has separate maskable icons, dead tab/sheet code is gone', () => {
+  const sw = read('sw.js');
+  const html = read('index.html');
+  const app = read('js/app.js');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  // ไฟล์ที่ precache ต้องมีอยู่จริง
+  const shell = [...sw.slice(sw.indexOf('APP_SHELL'), sw.indexOf('];', sw.indexOf('APP_SHELL'))).matchAll(/'([^']+)'/g)].map(m => m[1]).filter(f => f !== './');
+  assert.ok(shell.length >= 8);
+  for (const file of shell) assert.ok(fs.existsSync(path.join(__dirname, '..', file)), `precached file missing: ${file}`);
+  assert.match(html, /<script src="js\/pwa\.js"><\/script>/);
+  assert.match(read('js/pwa.js'), /serviceWorker\.register\('sw\.js'\)/);
+  // CDN ในหน้าเว็บทุกตัวต้องอยู่ในรายการแคชของ sw (ล็อกเวอร์ชันแล้ว)
+  for (const [, url] of html.matchAll(/(?:src|href)="(https:\/\/(?:unpkg\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com)[^"]+)"/g)) {
+    assert.ok(sw.includes(url), `CDN asset not cached by service worker: ${url}`);
+  }
+  // manifest: ไอคอน any กับ maskable แยกกัน และไฟล์มีจริง
+  const manifest = JSON.parse(read('site.webmanifest'));
+  for (const icon of manifest.icons) {
+    assert.ok(['any', 'maskable'].includes(icon.purpose), 'icon purpose must be a single value');
+    assert.ok(fs.existsSync(path.join(__dirname, '..', icon.src.split('?')[0])), `icon missing: ${icon.src}`);
+  }
+  assert.ok(manifest.icons.some(i => i.purpose === 'maskable'));
+  // favicon ไม่อ้าง SVG ขนาดใหญ่
+  assert.doesNotMatch(html, /rel="icon" type="image\/svg\+xml"/);
+  // โค้ดจาก UI แท็บ/แผ่นล่างเดิมถูกลบ
+  assert.doesNotMatch(app, /activateCategory|setSheetCollapsed|SHEET_KEY|category-tab|workflowSteps|nextStepHint/);
+  // ชิปบันทึกแล้วบนแผนที่
+  assert.equal((html.match(/id="mapSavedChip"/g) || []).length, 1);
+  assert.match(app, /function flashSavedChip/);
+});
