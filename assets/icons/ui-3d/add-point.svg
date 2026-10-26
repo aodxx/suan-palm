@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" role="img" aria-labelledby="title"><title>add-point.svg</title><defs>
-<linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#83e1ff"/><stop offset=".5" stop-color="#238bea"/><stop offset="1" stop-color="#174a9c"/></linearGradient>
-<linearGradient id="green" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9cff9d"/><stop offset=".55" stop-color="#28c65b"/><stop offset="1" stop-color="#13783b"/></linearGradient>
-<linearGradient id="red" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff9eac"/><stop offset=".5" stop-color="#f43d59"/><stop offset="1" stop-color="#a90e35"/></linearGradient>
-<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0a1"/><stop offset=".5" stop-color="#ffc344"/><stop offset="1" stop-color="#d77b0a"/></linearGradient>
-<linearGradient id="purple" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e0a4ff"/><stop offset=".5" stop-color="#a052ed"/><stop offset="1" stop-color="#5922b8"/></linearGradient>
-<linearGradient id="silver" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#9eb7d7"/></linearGradient>
-</defs><ellipse cx="50" cy="88" rx="31" ry="6" fill="#071b32" opacity=".35"/><circle cx="50" cy="50" r="34" fill="url(#green)" stroke="#a4ffcf" stroke-width="3"/><path d="M50 31v38M31 50h38" stroke="#fff" stroke-width="9" stroke-linecap="round"/></svg>

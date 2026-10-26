@@ -47,14 +47,23 @@ test('disabled primary/export actions explain which prerequisite is missing', ()
   }
 });
 
-test('all referenced 3D SVG icons exist and have an SVG viewBox', () => {
-  const sources = [...html.matchAll(/<img[^>]+src="(assets\/icons\/ui-3d\/[^"]+\.svg)"/g)].map(match => match[1]);
-  assert.ok(sources.length >= 10);
-  for (const src of new Set(sources)) {
-    const svg = read(src);
-    assert.match(svg, /<svg\b/);
-    assert.match(svg, /viewBox=/);
-  }
+test('every icon comes from the single inline SVG sprite and resolves to a symbol', () => {
+  const used = [...html.matchAll(/<use href="#(i-[a-z-]+)"/g)].map(match => match[1]);
+  assert.ok(used.length >= 20);
+  for (const id of new Set(used)) assert.match(html, new RegExp(`<symbol id="${id}" viewBox="0 0 24 24"`), `missing sprite symbol ${id}`);
+  const appJs = read('js/app.js');
+  for (const id of new Set([...appJs.matchAll(/#(i-[a-z-]+)/g)].map(match => match[1]))) assert.match(html, new RegExp(`<symbol id="${id}"`), `JS uses missing symbol ${id}`);
+  assert.doesNotMatch(html, /ui-3d/, 'old multi-colour 3D icons must not come back');
+  assert.doesNotMatch(appJs, /ui-3d/);
+  assert.match(css, /\.ic\s*\{[^}]*stroke:\s*currentColor/);
+});
+
+test('UI uses one set of design tokens instead of per-component colours and radii', () => {
+  for (const token of ['--palm-700', '--fruit', '--danger', '--r-sm', '--r-md', '--r-lg', '--sh-1', '--sh-2']) assert.match(css, new RegExp(`${token}:`), `missing token ${token}`);
+  const rules = css.replace(/:root\s*\{[^}]*\}/, '');
+  const radii = new Set([...rules.matchAll(/border-radius:\s*([^;}]+)/g)].map(match => match[1].replace(/\s*!important/, '').trim()));
+  for (const radius of radii) assert.match(radius, /^(var\(--(r-sm|r-md|r-lg|pill)\)|50%|0|0 var\(--r-sm\) var\(--r-sm\) 0|var\(--r-lg\) var\(--r-lg\) 0 0|0 0 3px 3px|4px)$/, `off-scale radius: ${radius}`);
+  assert.doesNotMatch(html + read('js/app.js'), /[\u{1F000}-\u{1FFFF}\u2705\u25A0-\u25FF\u26A0\uFE0F]/u, 'emoji and symbol glyphs look different on every phone; use sprite icons');
 });
 
 test('responsive mobile shell is full-screen and has separate tools/report views', () => {
@@ -62,12 +71,10 @@ test('responsive mobile shell is full-screen and has separate tools/report views
   assert.match(css, /max-width: 720px/);
   assert.match(css, /:focus-visible/);
   assert.match(css, /prefers-reduced-motion/);
-  assert.match(css, /#app\s*\{\s*position:\s*static;\s*display:\s*flex;\s*flex-direction:\s*column/);
-  assert.match(css, /#map\s*\{\s*position:\s*relative;[^}]*order:\s*0;[^}]*height:\s*42dvh/);
-  assert.match(css, /#sidebar\s*\{\s*position:\s*relative;[^}]*order:\s*1/);
-  assert.match(css, /html, body\s*\{\s*height:\s*auto;[^}]*overflow-y:\s*auto/);
-  assert.match(css, /#sidebarContent\s*\{\s*overflow-y:\s*auto/);
-  assert.match(css, /\.mobile-action-dock\s*\{\s*display:\s*none\s*!important/);
+  assert.match(css, /#app\s*\{\s*position:\s*relative;\s*display:\s*block;[^}]*height:\s*100dvh/);
+  assert.match(css, /html, body\s*\{\s*width:\s*100%;\s*height:\s*100%;[^}]*overflow:\s*hidden/);
+  assert.match(css, /#sidebarContent\s*\{[^}]*overflow-y:\s*auto/);
+  assert.match(css, /\.status-area\s*\{\s*position:\s*sticky/, 'status stays visible while the tools list scrolls');
   assert.match(css, /#map\s*\{\s*position:\s*fixed;\s*z-index:\s*0;\s*inset:\s*0;[^}]*height:\s*100dvh/);
   assert.match(css, /body\[data-mobile-view="tools"\] #sidebar/);
   assert.match(css, /body\[data-mobile-view="report"\] #sidebar/);
@@ -118,8 +125,8 @@ test('equilateral planting calculations retain baseline values and supported spa
 });
 
 test('CSS keeps shared icon sizing and no sidebar sheet/dock in one-page mobile mode', () => {
-  assert.match(css, /\.inline-icon\s*\{[^}]*width:\s*23px/);
-  assert.match(css, /\.sheet-toggle\s*\{\s*display:\s*none\s*!important/);
+  assert.match(css, /\.ic\s*\{[^}]*width:\s*22px;\s*height:\s*22px/);
+  assert.doesNotMatch(css, /\.sheet-toggle|\.mobile-action-dock|\.category-tab/, 'dead sheet/dock/tab styles were removed');
 });
 
 test('map workflow supports crosshair boundary placement and separate app destinations', () => {
@@ -127,9 +134,9 @@ test('map workflow supports crosshair boundary placement and separate app destin
     assert.match(html, new RegExp(`id="${id}"`), `missing map control #${id}`);
   }
   assert.match(css, /\.map-ui\.is-drawing \.map-crosshair\s*\{\s*display:\s*block/);
-  assert.match(css, /\.map-boundary-tools #mapBoundaryFinish\s*\{[^}]*background:\s*#168447/);
+  assert.match(css, /\.map-boundary-tools #mapBoundaryFinish\s*\{[^}]*background:\s*var\(--palm-700\)/);
   assert.match(css, /\.map-layer-sheet\s*\{\s*position:\s*fixed/);
-  assert.match(css, /\.map-primary-action\s*\{[^}]*background:\s*#f28c28/);
+  assert.match(css, /\.map-primary-action\s*\{[^}]*background:\s*var\(--fruit\)/);
   assert.deepEqual([...html.matchAll(/data-map-layer="([^"]+)"/g)].map(match => match[1]), ['satellite', 'road', 'hybrid']);
   const app = read('js/app.js');
   for (const fn of ['startMobileBoundary', 'addMobileBoundaryPoint', 'undoMobileBoundaryPoint', 'finishMobileBoundary', 'setMobileView']) assert.match(app, new RegExp(`function ${fn}\\(`));
@@ -182,8 +189,8 @@ test('mobile map provides an explicit north-up indicator and user-initiated came
   assert.match(css, /\.map-compass\s*\{[^}]*width:\s*48px;[^}]*height:\s*48px/);
   assert.match(css, /\.map-quick-actions\s*\{[^}]*top:\s*calc\(144px/);
   assert.match(css, /\.camera-photo-icon\s*\{[^}]*border-radius:\s*50%/);
-  assert.match(read('assets/icons/ui-3d/camera.svg'), /<svg\b[^>]*viewBox=/);
-  assert.match(read('assets/icons/ui-3d/north-arrow.svg'), /<svg\b[^>]*viewBox=/);
+  assert.match(html, /<symbol id="i-camera"/);
+  assert.match(html, /<symbol id="i-compass"/);
   const app = read('js/app.js');
   assert.match(app, /if \(\$\('mapCameraInput'\)\) \$\('mapCameraInput'\)\.addEventListener\('change'/);
   assert.match(app, /URL\.createObjectURL\(file\)/);
@@ -198,8 +205,8 @@ test('mobile primary action expands four round actions in a staggered semicircle
   assert.match(html, /id="mapActionArea" class="map-action-area"/);
   assert.match(html, /id="mapActionBackdrop"[^>]*aria-label="ปิดเมนูคำสั่ง"[^>]*hidden/);
   assert.match(html, /id="mapActionMenu"[^>]*aria-hidden="true" inert/);
-  for (const icon of ['draw.svg', 'measure.svg', 'plant.svg', 'plot.svg']) {
-    assert.match(html, new RegExp(`assets/icons/ui-3d/${icon}`));
+  for (const icon of ['draw', 'measure', 'plant', 'plot']) {
+    assert.match(html, new RegExp(`<button id="map[A-Za-z]+Action"[^>]*>(?:(?!</button>)[\\s\\S])*#i-${icon}"`));
   }
   assert.match(css, /\.map-action-area\s*\{[^}]*left:\s*50%/);
   assert.match(css, /--radial-outer-x:\s*clamp\(78px,\s*30vw,\s*104px\)/);

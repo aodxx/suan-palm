@@ -81,6 +81,10 @@ map.addControl(new L.Control.Draw({
 
 // ---------- องค์ประกอบ UI ----------
 const $ = id => document.getElementById(id);
+// เปลี่ยนเฉพาะข้อความของปุ่ม โดยคงไอคอนไว้
+// ไอคอน + ของปุ่มกลางล่าง (ใช้ซ้ำเมื่อรีเซ็ตปุ่ม)
+const FAB_PLUS_ICON = '<svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>';
+const setLabel = (el, text) => { const l = el && el.querySelector('.lbl'); if (l) l.textContent = text; else if (el) el.textContent = text; };
 const statusEl = $('status');
 const CONFIRM_NEW_BOUNDARY = 'การวาดขอบเขตใหม่จะแทนแปลงเดิมและล้างจุดปลูกทั้งหมด รวมถึงจุดที่ลากปรับไว้ ต้องการดำเนินการต่อหรือไม่?';
 let boundaryEditApproved = false;
@@ -199,28 +203,6 @@ function updateWorkflow() {
     generate.disabled = !hasBoundary;
     generate.title = hasBoundary ? (hasTrees ? 'สร้างใหม่จะแทนที่จุดที่ปรับตำแหน่งไว้' : 'สร้างจุดปลูกจากขอบเขตและค่าตั้งปัจจุบัน') : 'วาดขอบเขตก่อนจึงจะสร้างจุดปลูกได้';
   }
-  const mobileAction = $('mobilePrimaryAction');
-  const mobileLabel = mobileAction?.querySelector('span');
-  const mobileIcon = mobileAction?.querySelector('img');
-  const mobileHint = $('mobileActionHint');
-  if (mobileAction && mobileLabel && mobileIcon && mobileHint) {
-    if (!hasBoundary) {
-      mobileLabel.textContent = 'วาดขอบเขตแปลง';
-      mobileIcon.src = 'assets/icons/ui-3d/draw.svg';
-      mobileHint.textContent = 'ขั้นตอนถัดไป: วาดขอบเขตแปลงบนแผนที่';
-      mobileAction.dataset.action = 'draw';
-    } else if (!hasTrees) {
-      mobileLabel.textContent = 'สร้างจุดปลูกปาล์ม';
-      mobileIcon.src = 'assets/icons/ui-3d/plant.svg';
-      mobileHint.textContent = 'ขอบเขตพร้อมแล้ว · กดเพื่อคำนวณจุดปลูก';
-      mobileAction.dataset.action = 'generate';
-    } else {
-      mobileLabel.textContent = 'ดูและแก้จุดปลูก';
-      mobileIcon.src = 'assets/icons/ui-3d/select.svg';
-      mobileHint.textContent = 'สร้างแล้ว ' + trees.length.toLocaleString('th-TH') + ' จุด · แตะจุดบนแผนที่เพื่อแก้ไข';
-      mobileAction.dataset.action = 'review';
-    }
-  }
   updateMapFlow();
 }
 
@@ -314,9 +296,9 @@ function formatUserAddress(address) {
 
 function updateLocationLabel() {
   const el = $('locationStatus');
-  if (el) el.textContent = '🔵 ตำแหน่งมือถือ: ' + (userLocation ? formatUserAddress(userAddress) : 'ยังไม่ได้อนุญาต');
+  if (el) el.textContent = 'ตำแหน่งมือถือ: ' + (userLocation ? formatUserAddress(userAddress) : 'ยังไม่ได้อนุญาต');
   const plotEl = $('plotLocationStatus');
-  if (plotEl) plotEl.textContent = '🟠 ตำแหน่งแปลง: ' + (plotLocation ? formatUserAddress(plotAddress) : 'ยังไม่ได้ชี้บนแผนที่');
+  if (plotEl) plotEl.textContent = 'ตำแหน่งแปลง: ' + (plotLocation ? formatUserAddress(plotAddress) : 'ยังไม่ได้ชี้บนแผนที่');
 }
 
 async function reverseGeocode(lat, lng, target = 'user') {
@@ -389,7 +371,7 @@ function requestUserLocation() {
     setStatus('ได้รับตำแหน่งแล้ว กรุณาวาดขอบเขตแปลงของคุณ');
     if (button) {
       button.disabled = false;
-      button.textContent = '📍 ดึงตำแหน่งของฉันอีกครั้ง';
+      setLabel(button, 'ดึงตำแหน่งของฉันอีกครั้ง');
     }
   }, error => {
     userLocation = null;
@@ -410,7 +392,7 @@ function requestUserLocation() {
     setStatus(message, 'warn');
     if (button) {
       button.disabled = false;
-      button.textContent = '📍 อนุญาตและใช้ตำแหน่งของฉัน';
+      setLabel(button, 'อนุญาตและใช้ตำแหน่งของฉัน');
     }
   }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
 }
@@ -427,7 +409,7 @@ function savePlotLocation(latlng) {
   renderPlotLocationMarker();
   pickingPlotLocation = false;
   $('map').classList.remove('is-picking-plot');
-  $('btnPickPlot').textContent = '📌 ชี้ตำแหน่งกึ่งกลางแปลงอีกครั้ง';
+  setLabel($('btnPickPlot'), 'ชี้ตำแหน่งกึ่งกลางแปลงอีกครั้ง');
   plotAddress = null;
   updateLocationLabel();
   reverseGeocode(plotLocation.lat, plotLocation.lng, 'plot');
@@ -505,7 +487,7 @@ function startDesktopMeasure() {
   updateMapSummary();
   desktopMeasureHandler = new L.Draw.Polyline(map, {
     metric: true,
-    shapeOptions: { color: '#f28c28', weight: 4, opacity: 0.95, dashArray: '8 6' }
+    shapeOptions: { color: '#f59a2e', weight: 4, opacity: 0.95, dashArray: '8 6' }
   });
   desktopMeasureHandler.enable();
   setStatus('โหมดวัดระยะ: คลิกจุดเริ่มและจุดถัดไปบนแผนที่ แล้วดับเบิลคลิกเพื่อจบ', 'ok');
@@ -577,17 +559,17 @@ function renderMobileBoundaryPoints() {
   const finishButton = $('mapBoundaryFinish');
   if (finishButton) {
     finishButton.hidden = !canFinish;
-    finishButton.textContent = mobileBoundaryKind === 'measure' ? '✓ จบวัด' : '✓ บันทึก';
+    setLabel(finishButton, mobileBoundaryKind === 'measure' ? 'จบวัด' : 'บันทึก');
     finishButton.setAttribute('aria-label', mobileBoundaryKind === 'measure' ? 'จบการวัดระยะ' : 'บันทึกขอบเขตแปลง');
   }
   const boundaryHint = $('mapBoundaryHint');
   if (boundaryHint) {
     boundaryHint.textContent = canFinish
-      ? (mobileBoundaryKind === 'measure' ? 'กด + เพื่อเพิ่มจุด หรือ ✓ จบวัด' : 'กด + เพื่อเพิ่มมุมได้ไม่จำกัด หรือ ✓ บันทึกแปลง')
+      ? (mobileBoundaryKind === 'measure' ? 'กด + เพื่อเพิ่มจุด หรือกด จบวัด' : 'กด + เพื่อเพิ่มมุมได้ไม่จำกัด หรือกด บันทึกแปลง')
       : (mobileBoundaryKind === 'measure' ? 'เลื่อนแผนที่แล้วกด + เพื่อเพิ่มจุด (อย่างน้อย 2 จุด)' : 'เลื่อนแผนที่แล้วกด + เพื่อเพิ่มมุม (ปักได้ไม่จำกัด ครบ 3 มุมขึ้นไปจึงบันทึกได้)');
   }
   if (mapPrimaryAction && mobileBoundaryMode) {
-    mapPrimaryAction.textContent = '+';
+    mapPrimaryAction.innerHTML = FAB_PLUS_ICON;
     mapPrimaryAction.dataset.canFinish = 'false';
     mapPrimaryAction.setAttribute('aria-label', 'ปักจุดที่กากบาท');
     mapPrimaryAction.title = 'เลื่อนแผนที่และกด + เพื่อเพิ่มจุด';
@@ -601,11 +583,11 @@ function startMobileBoundary(kind = 'boundary') {
   mobileBoundaryMode = true;
   mobileBoundaryKind = kind;
   lastMeasuredDistance = null;
-  mobileBoundaryLine = L.polyline([], { color: '#f28c28', weight: 4, opacity: 0.95 }).addTo(map);
+  mobileBoundaryLine = L.polyline([], { color: '#f59a2e', weight: 4, opacity: 0.95 }).addTo(map);
   mobileBoundaryPreview = L.polyline([], { color: '#ffffff', weight: 3, dashArray: '5 7', opacity: 0.95 }).addTo(map);
   $('mapActionMenu').hidden = true;
   $('mapPrimaryAction').setAttribute('aria-expanded', 'false');
-  $('mapPrimaryAction').textContent = '+';
+  $('mapPrimaryAction').innerHTML = FAB_PLUS_ICON;
   $('mapPrimaryAction').dataset.canFinish = 'false';
   $('mapPrimaryAction').setAttribute('aria-label', 'ปักจุดที่กากบาท');
   $('mapPrimaryAction').title = 'เลื่อนแผนที่และกด + เพื่อเพิ่มจุด';
@@ -637,7 +619,7 @@ function stopMobileBoundary() {
   if ($('mapBoundaryFinish')) $('mapBoundaryFinish').hidden = true;
   if ($('mapActionMenu')) $('mapActionMenu').hidden = false;
   if ($('mapPrimaryAction')) {
-    $('mapPrimaryAction').textContent = '+';
+    $('mapPrimaryAction').innerHTML = FAB_PLUS_ICON;
     $('mapPrimaryAction').dataset.canFinish = 'false';
     $('mapPrimaryAction').setAttribute('aria-label', 'เปิดคำสั่งแผนที่');
     $('mapPrimaryAction').title = 'เปิดคำสั่งแผนที่';
@@ -656,7 +638,7 @@ function addMobileBoundaryPoint() {
   }
   mobileBoundaryPoints.push(L.latLng(center.lat, center.lng));
   renderMobileBoundaryPoints();
-  setStatus('ปักจุดที่ ' + mobileBoundaryPoints.length + ' แล้ว · ' + (mobileBoundaryPoints.length < 3 ? 'เลื่อนแผนที่ไปยังมุมถัดไป' : 'ปักมุมเพิ่มได้ไม่จำกัด หรือกด ✓ บันทึก'), 'ok');
+  setStatus('ปักจุดที่ ' + mobileBoundaryPoints.length + ' แล้ว · ' + (mobileBoundaryPoints.length < 3 ? 'เลื่อนแผนที่ไปยังมุมถัดไป' : 'ปักมุมเพิ่มได้ไม่จำกัด หรือกด บันทึก'), 'ok');
 }
 
 function undoMobileBoundaryPoint() {
@@ -684,7 +666,7 @@ async function finishMobileBoundary() {
   }
   const coords = mobileBoundaryPoints.map(point => [point.lat, point.lng]);
   if (trees.length && !(await askConfirm(CONFIRM_NEW_BOUNDARY, { danger: true }))) {
-    setStatus('ยกเลิกการวาดขอบเขตใหม่แล้ว; แปลงและจุดปลูกเดิมยังอยู่ · ปักมุมต่อหรือกด ✕ ยกเลิก', 'ok');
+    setStatus('ยกเลิกการวาดขอบเขตใหม่แล้ว; แปลงและจุดปลูกเดิมยังอยู่ · ปักมุมต่อหรือกด ยกเลิก', 'ok');
     return;
   }
   const layer = L.polygon(coords, PLOT_BOUNDARY_STYLE);
@@ -768,7 +750,7 @@ function renderPlotLocationMarker() {
   if (!plotLocation) return;
   if (plotLocationMarker) map.removeLayer(plotLocationMarker);
   plotLocationMarker = L.marker([plotLocation.lat, plotLocation.lng], {
-    icon: L.divIcon({ className: 'plot-center-marker', html: '📌', iconSize: [30, 30], iconAnchor: [15, 30] })
+    icon: L.divIcon({ className: 'plot-center-marker', html: '<svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg>', iconSize: [30, 30], iconAnchor: [15, 30] })
   }).bindTooltip('กึ่งกลางแปลง', { direction: 'top', offset: [0, -24] }).addTo(map);
 }
 
@@ -1082,7 +1064,7 @@ async function generateGrid() {
   if (usesMobileMapUI() && document.body.dataset.mobileView !== 'map') setMobileView('map');
   flowBadCursor = 0;
   fitToPlot();
-  setStatus('✅ สร้างจุดปลูกสำเร็จทั้งหมด ' + trees.length.toLocaleString('th-TH') + ' ต้น (ระยะห่าง ' + spacing.toFixed(1) + ' เมตร).' + costText, 'ok');
+  setStatus('สร้างจุดปลูกสำเร็จทั้งหมด ' + trees.length.toLocaleString('th-TH') + ' ต้น (ระยะห่าง ' + spacing.toFixed(1) + ' เมตร).' + costText, 'ok');
 }
 
 function removeTree(t) {
@@ -1105,7 +1087,7 @@ function undoRemove() {
 }
 function openDeletePopup(t) {
   const div = document.createElement('div');
-  div.innerHTML = '<button type="button" class="tree-delete-btn">🗑 ลบต้นนี้</button>';
+  div.innerHTML = '<button type="button" class="tree-delete-btn"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg> ลบต้นนี้</button>';
   div.firstChild.onclick = () => removeTree(t);
   delPopup.setLatLng(t.marker.getLatLng()).setContent(div).openOn(map);
 }
@@ -1132,10 +1114,10 @@ function onDrag(t) {
     guideLine.setLatLngs([]);
     return;
   }
-  dragTip.setContent('ใกล้สุด ' + d.toFixed(2) + ' ม.' + (bad ? ' ⚠ น้อยกว่า ' + lastGeneratedSpacing.toFixed(1) + ' ม.!' : ' ✓'));
+  dragTip.setContent('ใกล้สุด ' + d.toFixed(2) + ' ม.' + (bad ? ' · น้อยกว่า ' + lastGeneratedSpacing.toFixed(1) + ' ม.' : ''));
   guideLine.setStyle({ color: bad ? '#ff1744' : '#ffeb3b' });
   guideLine.setLatLngs([ll, other.marker.getLatLng()]);
-  if (bad) setStatus('⚠ ต้นนี้อยู่ห่างจากต้นข้างเคียงเพียง ' + d.toFixed(2) + ' ม. (ต่ำกว่า ' + lastGeneratedSpacing.toFixed(1) + ' ม.)', 'warn', { toast: false });
+  if (bad) setStatus('ต้นนี้อยู่ห่างจากต้นข้างเคียงเพียง ' + d.toFixed(2) + ' ม. (ต่ำกว่า ' + lastGeneratedSpacing.toFixed(1) + ' ม.)', 'warn', { toast: false });
   else setStatus('ระยะถึงต้นที่ใกล้ที่สุด ' + d.toFixed(2) + ' ม.', 'ok');
 }
 
@@ -1147,7 +1129,7 @@ function recheckAll() {
     if (bad) n++;
     setBad(t, bad);
   }
-  if (n) setStatus('⚠️ พบ ' + n + ' ต้นที่อยู่ใกล้กันเกินไป (น้อยกว่า ' + lastGeneratedSpacing.toFixed(1) + ' เมตร) จุดเหล่านี้จะแสดงเป็นสีแดง', 'warn', { toast: false });
+  if (n) setStatus('พบ ' + n + ' ต้นที่อยู่ใกล้กันเกินไป (น้อยกว่า ' + lastGeneratedSpacing.toFixed(1) + ' เมตร) จุดเหล่านี้จะแสดงเป็นสีแดง', 'warn', { toast: false });
   else setStatus('ทุกต้นห่างกันอย่างน้อย ' + lastGeneratedSpacing.toFixed(1) + ' ม. (รวม ' + trees.length.toLocaleString('th-TH') + ' ต้น)', 'ok');
   flowBadCursor = 0;
   updateMapFlow();
@@ -1241,7 +1223,7 @@ function updateMapFlow() {
       cta.disabled = true;
     } else {
       detail.textContent = 'ปักมุมเพิ่มได้ไม่จำกัด ตามรูปร่างแปลงจริง หรือกดบันทึกเพื่อดูพื้นที่ทันที';
-      cta.textContent = '✓ บันทึก';
+      cta.textContent = 'บันทึก';
     }
     action = 'finish-draw';
   } else if (desktopDrawing) {
@@ -1261,10 +1243,10 @@ function updateMapFlow() {
     short = rai + ' ไร่ ' + ngan + ' งาน';
     title.textContent = 'พื้นที่ ' + rai + ' ไร่ ' + ngan + ' งาน ' + wa.toFixed(0) + ' ตร.ว.';
     detail.textContent = 'ประมาณ ' + est.toLocaleString('th-TH') + ' ต้น ที่ระยะ ' + getConfiguredSpacing().toFixed(1) + ' ม.';
-    cta.textContent = '🌴 สร้างจุดปลูก';
+    cta.textContent = 'สร้างจุดปลูก';
     second.hidden = false;
   } else if (reportExported && !trees.some(t => t.bad)) {
-    stage = 'done'; current = -1; count = '✓'; short = 'ส่งออกแล้ว';
+    stage = 'done'; current = -1; count = 'เสร็จ'; short = 'ส่งออกแล้ว';
     title.textContent = 'ส่งออกรายงานเรียบร้อย';
     detail.textContent = 'จำนวนจริง ' + trees.length.toLocaleString('th-TH') + ' ต้น · แก้ไขจุดแล้วส่งออกใหม่ได้ตลอด';
     cta.textContent = 'ส่งออกอีกครั้ง';
@@ -1276,19 +1258,19 @@ function updateMapFlow() {
     const est = Math.floor(currentAreaM2 / getSpacingMetrics().areaPerTree);
     const bad = trees.filter(t => t.bad).length;
     const diff = trees.length - est;
-    short = trees.length.toLocaleString('th-TH') + ' ต้น' + (bad ? ' · ⚠ ' + bad : '');
+    short = trees.length.toLocaleString('th-TH') + ' ต้น' + (bad ? ' · ใกล้เกิน ' + bad : '');
     title.textContent = 'จำนวนจริง ' + trees.length.toLocaleString('th-TH') + ' ต้น · ' + density + ' ต้น/ไร่';
     if (bad) {
-      detail.textContent = '⚠ ใกล้กันเกินไป ' + bad.toLocaleString('th-TH') + ' จุด (สีแดง) · ลากแก้ได้บนแผนที่';
+      detail.textContent = 'ใกล้กันเกินไป ' + bad.toLocaleString('th-TH') + ' จุด (สีแดง) · ลากแก้ได้บนแผนที่';
       cta.textContent = 'ดูจุดแดง';
       action = 'bad';
     } else {
-      detail.textContent = '✓ ทุกต้นห่างพอ · ต่างจากสูตร ' + (diff >= 0 ? '+' : '') + diff.toLocaleString('th-TH') + ' ต้น (แตะจุดเพื่อลบ/ลากปรับ)';
+      detail.textContent = 'ทุกต้นห่างพอ · ต่างจากสูตร ' + (diff >= 0 ? '+' : '') + diff.toLocaleString('th-TH') + ' ต้น (แตะจุดเพื่อลบ/ลากปรับ)';
       if (!($('plotName').value || '').trim()) {
         cta.textContent = 'ตั้งชื่อแปลง';
         action = 'name';
       } else {
-        cta.textContent = '▤ ส่งออกรายงาน';
+        cta.textContent = 'ส่งออกรายงาน';
         action = 'report';
       }
     }
@@ -1472,7 +1454,7 @@ if ($('mapCameraInput')) $('mapCameraInput').addEventListener('change', event =>
     title: 'ภาพภาคสนาม',
     icon: L.divIcon({
       className: 'camera-photo-icon',
-      html: '<img src="assets/icons/ui-3d/camera.svg" alt="">',
+      html: '<svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>',
       iconSize: [42, 42],
       iconAnchor: [21, 21]
     })
@@ -1598,13 +1580,13 @@ map.on(L.Draw.Event.CREATED, async e => {
   const areaText = m2ToThaiArea(currentAreaM2);
   let crossing = false;
   try { crossing = turf.kinks(currentFeature).features.length > 0; } catch (error) { crossing = false; }
-  if (crossing) setStatus('⚠ เส้นขอบตัดกันเอง พื้นที่อาจคลาดเคลื่อน · ตรวจลำดับมุม หรือวาดใหม่ก่อนสร้างจุดปลูก', 'warn');
+  if (crossing) setStatus('เส้นขอบตัดกันเอง พื้นที่อาจคลาดเคลื่อน · ตรวจลำดับมุม หรือวาดใหม่ก่อนสร้างจุดปลูก', 'warn');
   else setStatus('พื้นที่ ' + areaText.rai + ' ไร่ ' + areaText.ngan + ' งาน · กด "สร้างจุดปลูก" ได้เลย', 'ok');
 });
 map.on(L.Draw.Event.EDITED, () => {
   clearGrid(); updateArea();
   saveDraft();
-  setStatus('แก้ไขขอบเขตแล้ว กรุณากด "🌴 สร้างจุดปลูกปาล์ม" ใหม่');
+  setStatus('แก้ไขขอบเขตแล้ว กรุณากด "สร้างจุดปลูกปาล์ม" ใหม่');
 });
 map.on(L.Draw.Event.DELETED, () => {
   clearGrid(); updateArea();
@@ -1619,7 +1601,7 @@ $('btnGenerate').addEventListener('click', async () => {
 });
 // [แก้ไข 2] เพิ่ม confirm ก่อนล้างทั้งหมด (ถ้ากดยกเลิกให้ยกเลิกการล้าง)
 $('btnClear').addEventListener('click', async () => {
-  if ((drawnItems.getLayers().length || trees.length || cameraPhotoMarkers.length) && !(await askConfirm('⚠️ คุณแน่ใจหรือไม่ที่จะล้างพื้นที่ จุดปลูก และหมุดภาพทั้งหมด? ข้อมูลจะหายไปและกู้คืนไม่ได้'))) return;
+  if ((drawnItems.getLayers().length || trees.length || cameraPhotoMarkers.length) && !(await askConfirm('คุณแน่ใจหรือไม่ที่จะล้างพื้นที่ จุดปลูก และหมุดภาพทั้งหมด? ข้อมูลจะหายไปและกู้คืนไม่ได้'))) return;
   drawnItems.clearLayers(); clearGrid();
   clearCameraPhotoMarkers();
   plotLocation = null;
@@ -1630,7 +1612,7 @@ $('btnClear').addEventListener('click', async () => {
     map.removeLayer(plotLocationMarker);
     plotLocationMarker = null;
   }
-  $('btnPickPlot').textContent = '📌 ชี้ตำแหน่งกึ่งกลางแปลง';
+  setLabel($('btnPickPlot'), 'ชี้ตำแหน่งกึ่งกลางแปลง');
   updateLocationLabel();
   updateArea();
   try {
