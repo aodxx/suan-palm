@@ -82,9 +82,50 @@ map.addControl(new L.Control.Draw({
 // ---------- องค์ประกอบ UI ----------
 const $ = id => document.getElementById(id);
 const statusEl = $('status');
+const CONFIRM_NEW_BOUNDARY = 'การวาดขอบเขตใหม่จะแทนแปลงเดิมและล้างจุดปลูกทั้งหมด รวมถึงจุดที่ลากปรับไว้ ต้องการดำเนินการต่อหรือไม่?';
+let boundaryEditApproved = false;
 let desktopDrawing = false;      // กำลังวาดด้วยเครื่องมือ Leaflet.draw บนเดสก์ท็อป
 let flowBadCursor = 0;          // ลำดับจุดสีแดงที่กำลังพาไปดู
 let flowLastStage = '';         // ใช้ทำแอนิเมชันเมื่อเปลี่ยนขั้นตอน
+// ---------- กล่องยืนยันในแอป (แทน confirm ของเบราว์เซอร์ ที่บนมือถือดูแปลกและบล็อกหน้าจอ) ----------
+let confirmResolver = null;
+let confirmReturnFocus = null;
+function closeConfirm(result) {
+  const dialog = $('confirmDialog');
+  if (!dialog || dialog.hidden) return;
+  dialog.hidden = true;
+  const resolve = confirmResolver;
+  confirmResolver = null;
+  if (confirmReturnFocus?.isConnected) confirmReturnFocus.focus({ preventScroll: true });
+  if (resolve) resolve(result);
+}
+function askConfirm(message, { danger = false, okLabel = 'ดำเนินการต่อ', cancelLabel = 'ยกเลิก' } = {}) {
+  const dialog = $('confirmDialog');
+  if (!dialog) return Promise.resolve(window.confirm(message));   // ไม่มี UI ให้ใช้ ย้อนกลับไปกล่องของเบราว์เซอร์
+  if (confirmResolver) closeConfirm(false);
+  confirmReturnFocus = document.activeElement;
+  $('confirmText').textContent = message;
+  $('confirmOk').textContent = okLabel;
+  $('confirmCancel').textContent = cancelLabel;
+  $('confirmOk').classList.toggle('is-danger', danger);
+  dialog.hidden = false;
+  $('confirmCancel').focus({ preventScroll: true });   // โฟกัสที่ปุ่มปลอดภัยก่อน กันกดผ่านโดยไม่ตั้งใจ
+  return new Promise(resolve => { confirmResolver = resolve; });
+}
+$('confirmOk')?.addEventListener('click', () => closeConfirm(true));
+$('confirmCancel')?.addEventListener('click', () => closeConfirm(false));
+$('confirmDialog')?.addEventListener('click', event => { if (event.target === $('confirmDialog')) closeConfirm(false); });
+document.addEventListener('keydown', event => {
+  if (!$('confirmDialog') || $('confirmDialog').hidden) return;
+  if (event.key === 'Escape') { event.preventDefault(); closeConfirm(false); }
+  if (event.key === 'Tab') {   // ให้โฟกัสวนอยู่ในกล่องเท่านั้น
+    const buttons = [$('confirmCancel'), $('confirmOk')];
+    const index = buttons.indexOf(document.activeElement);
+    event.preventDefault();
+    buttons[(index + (event.shiftKey ? buttons.length - 1 : 1)) % buttons.length].focus();
+  }
+});
+
 let mapToastTimer = null;
 function hideMapToast() {
   const toast = $('mapToast');
@@ -242,6 +283,8 @@ function getSpacingMetrics(spacing = getConfiguredSpacing()) {
 
 function updateSpacingSummary() {
   const metrics = getSpacingMetrics();
+  const sub = $('appSub');
+  if (sub) { const s = Number(getConfiguredSpacing().toFixed(1)); sub.textContent = 'ปลูกแบบสามเหลี่ยมด้านเท่า ' + s + ' × ' + s + ' × ' + s + ' เมตร'; }
   $('rowSpacing').textContent = metrics.rowSpacing.toFixed(3) + ' ม.';
   $('treePerRai').textContent = metrics.treesPerRai.toFixed(2) + ' (ปลูกได้ ' + Math.floor(metrics.treesPerRai) + ')';
   if (currentFeature) {
@@ -395,11 +438,11 @@ $('btnLocate').addEventListener('click', requestUserLocation);
 $('btnPickPlot').addEventListener('click', beginPickPlotLocation);
 $('plotName').addEventListener('input', () => { updateCount(); saveDraft(); });
 $('seedlingPrice').addEventListener('input', () => { updateSeedlingCost(); saveDraft(); });
-$('spacing').addEventListener('change', () => {
+$('spacing').addEventListener('change', async () => {
   const value = getConfiguredSpacing();
   $('spacing').value = value;
   if (trees.length && value !== lastGeneratedSpacing) {
-    if (!confirm('การเปลี่ยนระยะห่างจะล้างจุดปลูกเดิม เพื่อสร้างกริดใหม่ ต้องการดำเนินการต่อหรือไม่?')) {
+    if (!(await askConfirm('การเปลี่ยนระยะห่างจะล้างจุดปลูกเดิม เพื่อสร้างกริดใหม่ ต้องการดำเนินการต่อหรือไม่?'))) {
       $('spacing').value = lastGeneratedSpacing;
       updateSpacingSummary();
       return;
@@ -617,7 +660,7 @@ function undoMobileBoundaryPoint() {
   setStatus('ย้อนจุดล่าสุดแล้ว · เหลือ ' + mobileBoundaryPoints.length + ' จุด', 'ok');
 }
 
-function finishMobileBoundary() {
+async function finishMobileBoundary() {
   if (mobileBoundaryKind === 'measure') {
     if (mobileBoundaryPoints.length < 2) {
       setStatus('ต้องปักอย่างน้อย 2 จุดก่อนจบการวัด', 'warn');
@@ -634,8 +677,12 @@ function finishMobileBoundary() {
     return;
   }
   const coords = mobileBoundaryPoints.map(point => [point.lat, point.lng]);
+  if (trees.length && !(await askConfirm(CONFIRM_NEW_BOUNDARY, { danger: true }))) {
+    setStatus('ยกเลิกการวาดขอบเขตใหม่แล้ว; แปลงและจุดปลูกเดิมยังอยู่ · ปักมุมต่อหรือกด ✕ ยกเลิก', 'ok');
+    return;
+  }
   const layer = L.polygon(coords, PLOT_BOUNDARY_STYLE);
-  map.fire(L.Draw.Event.CREATED, { layer, layerType: 'polygon' });
+  map.fire(L.Draw.Event.CREATED, { layer, layerType: 'polygon', confirmed: true });
   if (drawnItems.hasLayer(layer)) {
     stopMobileBoundary();
     setStatus('บันทึกขอบเขตแล้ว · ตรวจพื้นที่และกดสร้างจุดปลูกได้', 'ok');
@@ -920,7 +967,7 @@ function insidePolys(x, y, polys) {
 }
 
 // ---------- สร้างกริดสามเหลี่ยมด้านเท่า ----------
-function generateGrid() {
+async function generateGrid() {
   if (!currentFeature) return;
 
   const metrics = getSpacingMetrics();
@@ -997,7 +1044,7 @@ function generateGrid() {
 
   if (!pts.length) { setStatus('ไม่พบจุดปลูกในพื้นที่นี้', 'warn'); return; }
   if (pts.length > 5000 &&
-      !confirm('จะสร้าง ' + pts.length.toLocaleString('th-TH') + ' จุด อาจทำให้เครื่องช้า ต้องการดำเนินการต่อหรือไม่?')) return;
+      !(await askConfirm('จะสร้าง ' + pts.length.toLocaleString('th-TH') + ' จุด อาจทำให้เครื่องช้า ต้องการดำเนินการต่อหรือไม่?'))) return;
 
   // ล้างจุดเดิมหลังตรวจสอบทุกเงื่อนไขผ่านแล้วเท่านั้น
   clearGrid();
@@ -1064,14 +1111,14 @@ function onDrag(t) {
   dragTip.setLatLng(ll);
   if (!map.hasLayer(dragTip)) map.addLayer(dragTip);
   if (!other) {
-    dragTip.setContent('ไม่มีต้นข้างเคียงในระยะ 18 ม.');
+    dragTip.setContent('ไม่มีต้นข้างเคียงในระยะ ' + (2 * lastGeneratedSpacing).toFixed(0) + ' ม.');
     guideLine.setLatLngs([]);
     return;
   }
-  dragTip.setContent('ใกล้สุด ' + d.toFixed(2) + ' ม.' + (bad ? ' ⚠ น้อยกว่า 9 ม.!' : ' ✓'));
+  dragTip.setContent('ใกล้สุด ' + d.toFixed(2) + ' ม.' + (bad ? ' ⚠ น้อยกว่า ' + lastGeneratedSpacing.toFixed(1) + ' ม.!' : ' ✓'));
   guideLine.setStyle({ color: bad ? '#ff1744' : '#ffeb3b' });
   guideLine.setLatLngs([ll, other.marker.getLatLng()]);
-  if (bad) setStatus('⚠ ต้นนี้อยู่ห่างจากต้นข้างเคียงเพียง ' + d.toFixed(2) + ' ม. (ต่ำกว่า 9 ม.)', 'warn', { toast: false });
+  if (bad) setStatus('⚠ ต้นนี้อยู่ห่างจากต้นข้างเคียงเพียง ' + d.toFixed(2) + ' ม. (ต่ำกว่า ' + lastGeneratedSpacing.toFixed(1) + ' ม.)', 'warn', { toast: false });
   else setStatus('ระยะถึงต้นที่ใกล้ที่สุด ' + d.toFixed(2) + ' ม.', 'ok');
 }
 
@@ -1083,8 +1130,8 @@ function recheckAll() {
     if (bad) n++;
     setBad(t, bad);
   }
-  if (n) setStatus('⚠️ พบ ' + n + ' ต้นที่อยู่ใกล้กันเกินไป (น้อยกว่า 9 เมตร) จุดเหล่านี้จะแสดงเป็นสีแดง', 'warn', { toast: false });
-  else setStatus('ทุกต้นห่างกันอย่างน้อย 9 ม. (รวม ' + trees.length.toLocaleString('th-TH') + ' ต้น)', 'ok');
+  if (n) setStatus('⚠️ พบ ' + n + ' ต้นที่อยู่ใกล้กันเกินไป (น้อยกว่า ' + lastGeneratedSpacing.toFixed(1) + ' เมตร) จุดเหล่านี้จะแสดงเป็นสีแดง', 'warn', { toast: false });
+  else setStatus('ทุกต้นห่างกันอย่างน้อย ' + lastGeneratedSpacing.toFixed(1) + ' ม. (รวม ' + trees.length.toLocaleString('th-TH') + ' ต้น)', 'ok');
   flowBadCursor = 0;
   updateMapFlow();
 }
@@ -1480,16 +1527,18 @@ document.addEventListener('click', event => {
   const message = editing
     ? 'การแก้ไขขอบเขตและกดบันทึกจะล้างจุดปลูกเดิม รวมถึงจุดที่ลากปรับไว้ ต้องการเข้าโหมดแก้ไขหรือไม่?'
     : 'การลบขอบเขตจะล้างจุดปลูกทั้งหมด รวมถึงจุดที่ลากปรับไว้ ต้องการเข้าโหมดลบหรือไม่?';
-  if (!confirm(message)) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    setStatus('ยกเลิกการเปลี่ยนขอบเขตแล้ว; จุดปลูกเดิมยังอยู่', 'ok');
-  }
+  if (boundaryEditApproved) { boundaryEditApproved = false; return; }
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  askConfirm(message, { danger: true }).then(ok => {
+    if (ok) { boundaryEditApproved = true; control.click(); }
+    else setStatus('ยกเลิกการเปลี่ยนขอบเขตแล้ว; จุดปลูกเดิมยังอยู่', 'ok');
+  });
 }, true);
 map.on('click', e => {
   if (pickingPlotLocation) savePlotLocation(e.latlng);
 });
-map.on(L.Draw.Event.CREATED, e => {
+map.on(L.Draw.Event.CREATED, async e => {
   if (e.layerType === 'polyline') {
     const points = e.layer.getLatLngs();
     const distance = points.slice(1).reduce((sum, point, index) => sum + map.distance(points[index], point), 0);
@@ -1503,7 +1552,7 @@ map.on(L.Draw.Event.CREATED, e => {
     setStatus('วัดระยะได้ ' + formatMapDistance(distance) + ' · แนววัดนี้ไม่เปลี่ยนขอบเขตแปลง', 'ok');
     return;
   }
-  if (trees.length && !confirm('การวาดขอบเขตใหม่จะแทนแปลงเดิมและล้างจุดปลูกทั้งหมด รวมถึงจุดที่ลากปรับไว้ ต้องการดำเนินการต่อหรือไม่?')) {
+  if (trees.length && !e.confirmed && !(await askConfirm(CONFIRM_NEW_BOUNDARY, { danger: true }))) {
     setStatus('ยกเลิกการวาดขอบเขตใหม่แล้ว; แปลงและจุดปลูกเดิมยังอยู่', 'ok');
     return;
   }
@@ -1536,13 +1585,13 @@ map.on(L.Draw.Event.DELETED, () => {
 });
 
 // [แก้ไข 2] เพิ่ม confirm ก่อนสร้างจุดปลูก (ถ้ากดยกเลิกจะไม่ทำงาน)
-$('btnGenerate').addEventListener('click', () => {
-  if (trees.length && !confirm('มีจุดปลูกเดิมอยู่แล้ว การสร้างใหม่จะแทนที่จุดที่คุณปรับไว้ ต้องการดำเนินการต่อหรือไม่?')) return;
-  generateGrid();
+$('btnGenerate').addEventListener('click', async () => {
+  if (trees.length && !(await askConfirm('มีจุดปลูกเดิมอยู่แล้ว การสร้างใหม่จะแทนที่จุดที่คุณปรับไว้ ต้องการดำเนินการต่อหรือไม่?'))) return;
+  await generateGrid();
 });
 // [แก้ไข 2] เพิ่ม confirm ก่อนล้างทั้งหมด (ถ้ากดยกเลิกให้ยกเลิกการล้าง)
-$('btnClear').addEventListener('click', () => {
-  if ((drawnItems.getLayers().length || trees.length || cameraPhotoMarkers.length) && !confirm('⚠️ คุณแน่ใจหรือไม่ที่จะล้างพื้นที่ จุดปลูก และหมุดภาพทั้งหมด? ข้อมูลจะหายไปและกู้คืนไม่ได้')) return;
+$('btnClear').addEventListener('click', async () => {
+  if ((drawnItems.getLayers().length || trees.length || cameraPhotoMarkers.length) && !(await askConfirm('⚠️ คุณแน่ใจหรือไม่ที่จะล้างพื้นที่ จุดปลูก และหมุดภาพทั้งหมด? ข้อมูลจะหายไปและกู้คืนไม่ได้'))) return;
   drawnItems.clearLayers(); clearGrid();
   clearCameraPhotoMarkers();
   plotLocation = null;
@@ -1605,4 +1654,5 @@ map.whenReady(() => {
 
 // กู้คืนข้อมูลล่าสุดหลังประกาศ event และฟังก์ชันทั้งหมดแล้ว
 restoreDraft();
+updateSpacingSummary();
 updateWorkflow();
