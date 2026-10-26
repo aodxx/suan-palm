@@ -284,3 +284,15 @@ test('flow card is a collapsed chip by default, expands on demand and auto-colla
   assert.match(app, /map\.on\('click movestart'/);
   assert.match(css, /\.flow-panel\s*\{[^}]*position:\s*absolute/);
 });
+
+test('map shows warnings and delete-undo itself because the status panel is hidden on mobile', () => {
+  const app = read('js/app.js');
+  assert.match(html, /id="mapToast"[^>]*role="status"/);
+  assert.match(html, /id="mapToastAction"/);
+  assert.match(app, /function showMapToast\(/);
+  assert.match(app, /if \(cls === 'warn' && opts\.toast !== false\) showMapToast/);
+  assert.match(app, /label: 'เลิกทำ', onClick: undoRemove/);
+  assert.match(app, /class=\"tree-delete-btn\"/);
+  assert.match(css, /\.tree-delete-btn\s*\{\s*min-height:\s*44px/);
+  assert.match(app, /if \(drawnItems\.getLayers\(\)\.length\) fitToPlot\(\)/);
+});
