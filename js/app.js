@@ -154,6 +154,26 @@ function showMapToast(text, cls, { label = '', onClick = null, ms = 0, force = f
   if (mapToastTimer) clearTimeout(mapToastTimer);
   mapToastTimer = setTimeout(hideMapToast, ms || (cls === 'warn' ? 6000 : 3500));
 }
+// สั่นเบา ๆ บนมือถือเมื่อปักจุด/สร้างจุดสำเร็จ เพื่อให้รู้สึกว่าแอปตอบสนอง
+function buzz(ms = 12) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ไม่รองรับก็ข้าม */ } }
+function prefersReducedMotion() { return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+// ตัวเลขจำนวนต้นนับขึ้นจากค่าเดิมไปค่าใหม่ แทนการกระโดดทันที
+let shownTreeCount = 0, treeCountRaf = 0;
+function formatTreeSummary(n) { return n ? n.toLocaleString('th-TH') + ' ต้น' : 'ยังไม่สร้าง'; }
+function setAnimatedTreeCount(el, target) {
+  const from = shownTreeCount;
+  shownTreeCount = target;
+  cancelAnimationFrame(treeCountRaf);
+  if (prefersReducedMotion() || !target || Math.abs(target - from) < 20) { el.textContent = formatTreeSummary(target); return; }
+  const start = performance.now(), duration = 700;
+  const step = now => {
+    const p = Math.min(1, (now - start) / duration);
+    el.textContent = formatTreeSummary(Math.round(from + (target - from) * (1 - Math.pow(1 - p, 3))));
+    if (p < 1) treeCountRaf = requestAnimationFrame(step);
+  };
+  treeCountRaf = requestAnimationFrame(step);
+  el.classList.remove('count-pop'); void el.offsetWidth; el.classList.add('count-pop');
+}
 function setStatus(text, cls, opts = {}) {
   statusEl.textContent = text;
   statusEl.className = cls || '';
@@ -214,7 +234,7 @@ function updateMapSummary() {
   if (area) {
     area.textContent = currentFeature ? formatMapArea(currentAreaM2) : '– ไร่';
   }
-  if (count) count.textContent = trees.length ? trees.length.toLocaleString('th-TH') + ' ต้น' : 'ยังไม่สร้าง';
+  if (count) setAnimatedTreeCount(count, trees.length);
   if (perimeter && !mobileBoundaryMode) {
     const meters = currentFeature ? turf.length(currentFeature, { units: 'kilometers' }) * 1000 : 0;
     if (lastMeasuredDistance !== null) {
@@ -638,6 +658,7 @@ function addMobileBoundaryPoint() {
   }
   mobileBoundaryPoints.push(L.latLng(center.lat, center.lng));
   renderMobileBoundaryPoints();
+  if (typeof buzz === 'function') buzz(10);
   setStatus('ปักจุดที่ ' + mobileBoundaryPoints.length + ' แล้ว · ' + (mobileBoundaryPoints.length < 3 ? 'เลื่อนแผนที่ไปยังมุมถัดไป' : 'ปักมุมเพิ่มได้ไม่จำกัด หรือกด บันทึก'), 'ok');
 }
 
@@ -754,8 +775,10 @@ function renderPlotLocationMarker() {
   }).bindTooltip('กึ่งกลางแปลง', { direction: 'top', offset: [0, -24] }).addTo(map);
 }
 
-function createTreeMarker(lat, lng, bad = false) {
-  const icon = L.divIcon({ className: '', html: '<div class="tree-dot"></div>', iconSize: [12, 12], iconAnchor: [6, 6] });
+function createTreeMarker(lat, lng, bad = false, popDelay = null) {
+  // popDelay != null = ผุดทีละจุดเป็นคลื่นตอนสร้างใหม่ (จุดที่กู้คืนจากเครื่องไม่ต้องเล่นแอนิเมชัน)
+  const pop = popDelay !== null ? ' pop" style="animation-delay:' + popDelay + 'ms' : '';
+  const icon = L.divIcon({ className: '', html: '<div class="tree-dot' + pop + '"></div>', iconSize: [12, 12], iconAnchor: [6, 6] });
   const marker = L.marker([lat, lng], { icon, draggable: true }).addTo(gridLayer);
   const [x, y] = toXY(lng, lat);
   const tree = { marker, x, y, bad: Boolean(bad) };
@@ -1050,9 +1073,10 @@ async function generateGrid() {
   lastGeneratedSpacing = spacing;
 
   // สร้าง Marker (ลากได้) — เหตุการณ์ลาก/คลิกจัดการที่ gridLayer ครั้งเดียว
-  pts.forEach(p => {
+  const animateTrees = pts.length <= 800 && !prefersReducedMotion();
+  pts.forEach((p, index) => {
     const [lng, lat] = toLngLat(p.x, p.y);
-    createTreeMarker(lat, lng);
+    createTreeMarker(lat, lng, false, animateTrees ? Math.round(index * 900 / pts.length) : null);
   });
 
   rebuildHash();
@@ -1065,6 +1089,8 @@ async function generateGrid() {
   flowBadCursor = 0;
   fitToPlot();
   setStatus('สร้างจุดปลูกสำเร็จทั้งหมด ' + trees.length.toLocaleString('th-TH') + ' ต้น (ระยะห่าง ' + spacing.toFixed(1) + ' เมตร).' + costText, 'ok');
+  showMapToast('สร้างจุดปลูกแล้ว ' + trees.length.toLocaleString('th-TH') + ' ต้น · ลากจุดเพื่อปรับตำแหน่งได้', 'ok', { force: true, ms: 3200 });
+  buzz(18);
 }
 
 function removeTree(t) {
@@ -1206,6 +1232,10 @@ function updateMapFlow() {
   card.hidden = false;
   const hasBoundary = Boolean(currentFeature);
   const hasTrees = trees.length > 0;
+  // หน้าเริ่มต้นที่เป็นมิตร + จุดแจ้งบนแท็บรายงานเมื่อพร้อมส่งออก
+  document.body.classList.toggle('is-empty-plot', !hasBoundary && !mobileDrawing && !desktopDrawing);
+  const reportTab = $('mapReportShortcut');
+  if (reportTab) reportTab.dataset.ready = String(hasTrees && !reportExported);
   const title = $('mapFlowTitle'), detail = $('mapFlowDetail');
   const cta = $('mapFlowCta'), second = $('mapFlowSecondary');
   let stage = 'draw', action = 'draw', current = 0, count = '1/4', short = 'วาดแปลง';
