@@ -110,7 +110,7 @@
             <div class="field"><label for="rotation">หมุนแนวแถว (องศา, -90 ถึง 90)</label><input type="number" id="rotation" value="0" step="1" min="-90" max="90"></div>
             <div class="field"><label for="margin">เว้นระยะจากขอบแปลง (เมตร)</label><input type="number" id="margin" value="0" step="0.5" min="0"></div>
           </div>
-          <div class="card"><h2>ประมาณการค่าต้นกล้า</h2><div class="field"><label for="seedlingPrice">ราคาต้นกล้า (บาท/ต้น)</label><input type="number" id="seedlingPrice" min="0" step="0.01" inputmode="decimal" placeholder="เช่น 35"></div><div class="row"><span>ค่าต้นกล้ารวม</span><b class="cost-total" id="seedlingTotal">–</b></div></div>
+          <div class="card"><h2>ประมาณการค่าต้นกล้า</h2><div class="field"><label for="seedlingPrice">ราคาต้นกล้าเฉลี่ย (บาท/ต้น)</label><input type="number" id="seedlingPrice" min="0" step="0.01" inputmode="decimal" placeholder="เช่น 35"></div><div class="field"><label for="replantPct">เผื่อปลูกซ่อม (%)</label><input type="number" id="replantPct" min="0" max="30" step="1" inputmode="numeric" value="0"><div class="field-hint">ซื้อต้นกล้าเผื่อซ่อมต้นที่ตาย เช่น 5–10% ระบบรวมเข้าค่าต้นกล้าให้</div></div><div class="row"><span>จำนวนต้นกล้าที่ต้องซื้อ</span><b id="seedlingQty">–</b></div><div class="row"><span>ค่าต้นกล้ารวม</span><b class="cost-total" id="seedlingTotal">–</b></div></div>
         </section>
 
         <section class="category-panel" id="panel-report" aria-label="รายงานและส่งออก">
@@ -201,6 +201,15 @@
       <strong>เริ่มวางแผนสวนปาล์มของคุณ</strong>
       <span class="empty-mobile">แตะปุ่ม + สีส้มด้านล่าง แล้วเลือก “วาดแปลง” เพื่อปักมุมแปลง</span>
       <span class="empty-desktop">เลือกเครื่องมือรูปหลายเหลี่ยมที่มุมซ้ายบนของแผนที่ แล้วคลิกทีละมุมแปลง</span>
+    </div>
+  </div>
+  <div id="priceDialog" class="confirm-scrim" hidden>
+    <div class="confirm-box price-box" role="dialog" aria-modal="true" aria-labelledby="priceTitle">
+      <h2 id="priceTitle">ราคาต้นกล้าเฉลี่ยต้นละเท่าไร?</h2>
+      <p>ใส่ราคาเพื่อให้ระบบรวมค่าต้นกล้าในสรุปและรายงานให้อัตโนมัติ ข้ามไปก่อนได้ และกรอกทีหลังในหน้าเครื่องมือ</p>
+      <div class="field"><label for="priceInput">ราคาต้นกล้าเฉลี่ย (บาท/ต้น)</label><input type="number" id="priceInput" min="0" step="0.01" inputmode="decimal" placeholder="เช่น 35"></div>
+      <p id="priceEstimate" class="price-estimate" aria-live="polite"></p>
+      <div class="confirm-actions"><button id="priceSkip" type="button" class="confirm-cancel">ข้ามไปก่อน</button><button id="priceOk" type="button" class="confirm-ok" disabled>ใช้ราคานี้</button></div>
     </div>
   </div>
   <div id="confirmDialog" class="confirm-scrim" hidden>

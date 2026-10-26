@@ -48,7 +48,9 @@ function exportMetadata() {
     userAddress,
     postcode: userAddress && userAddress.postcode ? userAddress.postcode : '',
     seedlingPrice,
-    seedlingTotal: seedlingPrice !== null ? seedlingPrice * trees.length : null,
+    replantPct: getReplantPct(),
+    seedlingQty: getSeedlingQuantity(),
+    seedlingTotal: seedlingPrice !== null ? seedlingPrice * getSeedlingQuantity() : null,
     spacing: spacing.spacing,
     rowSpacing: spacing.rowSpacing,
     treesPerRai: spacing.treesPerRai,
@@ -82,6 +84,8 @@ $('btnGeoJSON').addEventListener('click', () => {
     พิกัดมือถือ: metadata.userLocation ? [metadata.userLocation.lat, metadata.userLocation.lng] : null,
     รหัสไปรษณีย์: metadata.postcode,
     ราคาต้นกล้าต่อต้นบาท: metadata.seedlingPrice,
+    เผื่อปลูกซ่อมเปอร์เซ็นต์: metadata.replantPct,
+    จำนวนต้นกล้าที่ต้องซื้อ: metadata.seedlingQty,
     ค่าต้นกล้ารวมบาท: metadata.seedlingTotal,
     ระยะห่างระหว่างต้นเมตร: metadata.spacing,
     ระยะห่างระหว่างแถวเมตร: metadata.rowSpacing,
@@ -102,6 +106,8 @@ $('btnCSV').addEventListener('click', () => {
     '# พิกัดมือถือ: ' + csvCell(metadata.userLocation ? metadata.userLocation.lat.toFixed(6) + ', ' + metadata.userLocation.lng.toFixed(6) : 'ไม่ได้อนุญาต'),
     '# รหัสไปรษณีย์: ' + csvCell(metadata.postcode || 'ไม่ระบุ'),
     '# ราคาต้นกล้า/ต้น: ' + csvCell(metadata.seedlingPrice !== null ? formatBaht(metadata.seedlingPrice) : 'ไม่ระบุ'),
+    '# เผื่อปลูกซ่อม: ' + csvCell(metadata.replantPct + '%'),
+    '# จำนวนต้นกล้าที่ต้องซื้อ: ' + csvCell(metadata.seedlingQty + ' ต้น'),
     '# ค่าต้นกล้ารวม: ' + csvCell(metadata.seedlingTotal !== null ? formatBaht(metadata.seedlingTotal) : 'ไม่ระบุ'),
     '# ระยะห่างระหว่างต้น: ' + csvCell(metadata.spacing.toFixed(1) + ' เมตร'),
     '# ระยะห่างระหว่างแถว: ' + csvCell(metadata.rowSpacing.toFixed(3) + ' เมตร'),
@@ -396,6 +402,7 @@ async function exportPdf() {
       ['ระยะห่างระหว่างต้น', metadata.spacing.toFixed(1) + ' เมตร'],
       ['ระยะห่างระหว่างแถว', metadata.rowSpacing.toFixed(3) + ' เมตร'],
       ['ราคาต้นกล้า/ต้น', metadata.seedlingPrice !== null ? formatBaht(metadata.seedlingPrice) : 'ไม่ระบุ'],
+      ['เผื่อปลูกซ่อม / จำนวนต้นกล้าที่ซื้อ', metadata.replantPct + '% / ' + metadata.seedlingQty.toLocaleString('th-TH') + ' ต้น'],
       ['ค่าต้นกล้ารวม', metadata.seedlingTotal !== null ? formatBaht(metadata.seedlingTotal) : 'ไม่ระบุ'],
       ['พิกัดแปลงที่ใช้ส่งออก', metadata.location ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6) : 'ไม่ทราบ'],
       ['พิกัดมือถือ', metadata.userLocation ? metadata.userLocation.lat.toFixed(6) + ', ' + metadata.userLocation.lng.toFixed(6) : 'ไม่ได้อนุญาต']
@@ -436,6 +443,7 @@ function printReportData(metadata) {
     treeCount: trees.length.toLocaleString('th-TH'),
     density: rai > 0 ? (trees.length / rai).toFixed(2) : '–',
     seedlingPrice: metadata.seedlingPrice !== null ? formatBaht(metadata.seedlingPrice) : 'ไม่ระบุ',
+    seedlingQty: metadata.replantPct + '% / ' + metadata.seedlingQty.toLocaleString('th-TH') + ' ต้น',
     seedlingTotal: metadata.seedlingTotal !== null ? formatBaht(metadata.seedlingTotal) : 'ไม่ระบุ',
     center: metadata.location
       ? metadata.location.lat.toFixed(6) + ', ' + metadata.location.lng.toFixed(6)
@@ -458,6 +466,7 @@ function printReportTemplate(metadata, data, mapImage) {
     ['ระยะห่างระหว่างต้น', metadata.spacing.toFixed(1) + ' เมตร'],
     ['ระยะห่างระหว่างแถว', metadata.rowSpacing.toFixed(3) + ' เมตร'],
     ['ราคาต้นกล้า/ต้น', data.seedlingPrice],
+    ['เผื่อปลูกซ่อม / จำนวนต้นกล้าที่ซื้อ', data.seedlingQty],
     ['ค่าต้นกล้ารวม', data.seedlingTotal],
     ['พิกัดแปลงที่ใช้ส่งออก', data.center],
     ['พิกัดมือถือ', data.userCenter]

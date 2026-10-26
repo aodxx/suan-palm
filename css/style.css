@@ -456,6 +456,12 @@ body.is-empty-plot .map-empty { display: grid; }
   .map-saved-chip.is-shown { animation: toast-in .28s var(--ease-pop); }
 }
 
+/* กล่องถามราคาต้นกล้า */
+.price-box h2 { margin: 0 0 6px; color: var(--palm-900); font-size: var(--t-lg); line-height: 1.35; }
+.price-box p { margin: 0 0 12px; color: var(--ink-2); font-size: var(--t-sm); line-height: 1.55; }
+.price-box .field { margin-bottom: 8px; }
+.price-box .price-estimate { min-height: 1.55em; margin-bottom: 12px; color: var(--fruit-ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; transition-delay: 0ms !important; animation-duration: .01ms !important; }
   .map-flow.flow-pop .flow-chip { animation: none; }

@@ -225,13 +225,93 @@ function formatBaht(value) {
   }) + ' บาท';
 }
 
+// เผื่อปลูกซ่อมเป็นเปอร์เซ็นต์ (0–30) และจำนวนต้นกล้าที่ต้องซื้อจริง (ปัดขึ้น)
+function getReplantPct() {
+  const value = parseFloat($('replantPct')?.value);
+  return Number.isFinite(value) ? Math.min(30, Math.max(0, value)) : 0;
+}
+function getSeedlingQuantity(count = trees.length) {
+  // ลบค่าเล็กน้อยกันเศษทศนิยมลอยตัว (เช่น 1000 × 1.1 ต้องได้ 1100 ไม่ใช่ 1101)
+  return Math.ceil(count * (100 + getReplantPct()) / 100 - 1e-9);
+}
+
 function updateSeedlingCost() {
   const totalEl = $('seedlingTotal');
   if (!totalEl) return;
   const price = getSeedlingPrice();
   totalEl.textContent = price !== null && trees.length
-    ? formatBaht(price * trees.length)
+    ? formatBaht(price * getSeedlingQuantity())
     : '–';
+  const qtyEl = $('seedlingQty');
+  if (qtyEl) qtyEl.textContent = trees.length
+    ? getSeedlingQuantity().toLocaleString('th-TH') + ' ต้น' + (getReplantPct() > 0 ? ' (เผื่อซ่อม ' + getReplantPct() + '%)' : '')
+    : '–';
+}
+
+// ---------- ถามราคาต้นกล้าก่อนสร้างจุดปลูกครั้งแรก (ข้ามได้) ----------
+const LAST_PRICE_KEY = 'suan-palm-last-price';
+let seedlingPriceSkipped = false;   // ผู้ใช้เลือกข้ามแล้ว ไม่ถามซ้ำจนกว่าจะล้างแผน
+let priceResolver = null;
+function readPriceInput() {
+  const value = parseFloat($('priceInput')?.value);
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+function updatePriceEstimate() {
+  const price = readPriceInput();
+  $('priceOk').disabled = price === null;
+  const est = currentFeature ? Math.floor(currentAreaM2 / getSpacingMetrics().areaPerTree) : 0;
+  const qty = getSeedlingQuantity(est);
+  $('priceEstimate').textContent = price !== null && est > 0
+    ? 'ประมาณ ' + qty.toLocaleString('th-TH') + ' ต้น × ' + formatBaht(price) + ' ≈ ' + formatBaht(price * qty)
+    : '';
+}
+function closePriceDialog(result) {
+  const dialog = $('priceDialog');
+  if (!dialog || dialog.hidden) return;
+  dialog.hidden = true;
+  const resolve = priceResolver;
+  priceResolver = null;
+  if (resolve) resolve(result);
+}
+function askSeedlingPrice() {
+  const dialog = $('priceDialog');
+  if (!dialog) return Promise.resolve('skip');
+  let last = '';
+  try { last = localStorage.getItem(LAST_PRICE_KEY) || ''; } catch (error) { /* ไม่มีที่เก็บก็ไม่ต้องเติมให้ */ }
+  $('priceInput').value = last;
+  updatePriceEstimate();
+  dialog.hidden = false;
+  $('priceInput').focus({ preventScroll: true });
+  return new Promise(resolve => { priceResolver = resolve; });
+}
+$('priceInput')?.addEventListener('input', updatePriceEstimate);
+$('priceSkip')?.addEventListener('click', () => closePriceDialog('skip'));
+$('priceOk')?.addEventListener('click', () => closePriceDialog('ok'));
+$('priceDialog')?.addEventListener('click', event => { if (event.target === $('priceDialog')) closePriceDialog('skip'); });
+document.addEventListener('keydown', event => {
+  const dialog = $('priceDialog');
+  if (!dialog || dialog.hidden) return;
+  if (event.key === 'Escape') { event.preventDefault(); closePriceDialog('skip'); }
+  if (event.key === 'Enter' && document.activeElement === $('priceInput') && !$('priceOk').disabled) { event.preventDefault(); closePriceDialog('ok'); }
+  if (event.key === 'Tab') {   // ให้โฟกัสวนอยู่ในกล่องเท่านั้น
+    const items = [$('priceInput'), $('priceSkip'), $('priceOk')].filter(el => !el.disabled);
+    const index = items.indexOf(document.activeElement);
+    event.preventDefault();
+    items[(index + (event.shiftKey ? items.length - 1 : 1)) % items.length].focus();
+  }
+});
+async function promptSeedlingPriceIfNeeded() {
+  if (getSeedlingPrice() !== null || seedlingPriceSkipped) return;
+  const result = await askSeedlingPrice();
+  if (result === 'ok') {
+    const price = readPriceInput();
+    $('seedlingPrice').value = String(price);
+    try { localStorage.setItem(LAST_PRICE_KEY, String(price)); } catch (error) { /* ข้าม */ }
+    updateSeedlingCost();
+    saveDraft();
+  } else {
+    seedlingPriceSkipped = true;
+  }
 }
 
 function getConfiguredSpacing() {
@@ -410,7 +490,8 @@ $('reportGateAction')?.addEventListener('click', () => {
   if (usesMobileMapUI()) setMobileView('map');
   if (!currentFeature) startBoundaryDraw();
 });
-$('seedlingPrice').addEventListener('input', () => { updateSeedlingCost(); saveDraft(); });
+$('seedlingPrice').addEventListener('input', () => { updateSeedlingCost(); updateMapFlow(); saveDraft(); });
+$('replantPct').addEventListener('input', () => { updateSeedlingCost(); updateMapFlow(); saveDraft(); });
 $('spacing').addEventListener('change', async () => {
   const value = getConfiguredSpacing();
   $('spacing').value = value;
@@ -691,6 +772,7 @@ function saveDraft() {
       savedAt: new Date().toISOString(),
       plotName: $('plotName').value || '',
       seedlingPrice: $('seedlingPrice').value || '',
+      replantPct: $('replantPct').value || '0',
       spacing: $('spacing').value || String(SPACING),
       rotation: $('rotation').value || '0',
       margin: $('margin').value || '0',
@@ -749,6 +831,7 @@ function restoreDraft() {
   try {
     $('plotName').value = draft.plotName || '';
     $('seedlingPrice').value = draft.seedlingPrice || '';
+    $('replantPct').value = draft.replantPct || '0';
     $('spacing').value = draft.spacing || String(SPACING);
     $('rotation').value = draft.rotation || '0';
     $('margin').value = draft.margin || '0';
@@ -1029,7 +1112,7 @@ async function generateGrid() {
   rebuildHash();
   updateCount();
   const price = getSeedlingPrice();
-  const costText = price !== null ? ' ค่าต้นกล้าประมาณ ' + formatBaht(price * trees.length) : '';
+  const costText = price !== null ? ' ค่าต้นกล้าประมาณ ' + formatBaht(price * getSeedlingQuantity()) : '';
   saveDraft();
   if (usesMobileMapUI() && document.body.dataset.mobileView !== 'map') setMobileView('map');
   flowBadCursor = 0;
@@ -1218,7 +1301,9 @@ function updateMapFlow() {
     const est = Math.floor(currentAreaM2 / getSpacingMetrics().areaPerTree);
     short = rai + ' ไร่ ' + ngan + ' งาน';
     title.textContent = 'พื้นที่ ' + rai + ' ไร่ ' + ngan + ' งาน ' + wa.toFixed(0) + ' ตร.ว.';
-    detail.textContent = 'ประมาณ ' + est.toLocaleString('th-TH') + ' ต้น ที่ระยะ ' + getConfiguredSpacing().toFixed(1) + ' ม.';
+    const flowPrice = getSeedlingPrice();
+    detail.textContent = 'ประมาณ ' + est.toLocaleString('th-TH') + ' ต้น ที่ระยะ ' + getConfiguredSpacing().toFixed(1) + ' ม.' +
+      (flowPrice !== null ? ' · ค่าต้นกล้าประมาณ ' + formatBaht(flowPrice * getSeedlingQuantity(est)) : '');
     cta.textContent = 'สร้างจุดปลูก';
     second.hidden = false;
   } else if (reportExported && !trees.some(t => t.bad)) {
@@ -1541,12 +1626,14 @@ map.on(L.Draw.Event.DELETED, () => {
 // [แก้ไข 2] เพิ่ม confirm ก่อนสร้างจุดปลูก (ถ้ากดยกเลิกจะไม่ทำงาน)
 $('btnGenerate').addEventListener('click', async () => {
   if (trees.length && !(await askConfirm('มีจุดปลูกเดิมอยู่แล้ว การสร้างใหม่จะแทนที่จุดที่คุณปรับไว้ ต้องการดำเนินการต่อหรือไม่?'))) return;
+  if (currentFeature) await promptSeedlingPriceIfNeeded();
   await generateGrid();
 });
 // [แก้ไข 2] เพิ่ม confirm ก่อนล้างทั้งหมด (ถ้ากดยกเลิกให้ยกเลิกการล้าง)
 $('btnClear').addEventListener('click', async () => {
   if ((drawnItems.getLayers().length || trees.length || cameraPhotoMarkers.length) && !(await askConfirm('คุณแน่ใจหรือไม่ที่จะล้างพื้นที่ จุดปลูก และหมุดภาพทั้งหมด? ข้อมูลจะหายไปและกู้คืนไม่ได้'))) return;
   drawnItems.clearLayers(); clearGrid();
+  seedlingPriceSkipped = false;
   clearCameraPhotoMarkers();
   plotLocation = null;
   plotAddress = null;
