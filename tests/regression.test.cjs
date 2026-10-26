@@ -346,3 +346,25 @@ test('mobile report view can finish: map is captured while hidden, name can be e
   assert.match(app, /if \(reportExported\) \{ reportExported = false; updateMapFlow\(\); \}/);
   assert.doesNotMatch(exporter, /โฟลเดอร์ Downloads/, 'iOS has no Downloads folder wording');
 });
+
+test('charm layer: friendly empty state, pop-in trees, count-up and report-ready dot stay connected', () => {
+  const html = read('index.html');
+  const css = read('css/style.css');
+  const app = read('js/app.js');
+  // หน้าแผนที่ว่างมีการ์ดต้อนรับ และเปิด/ปิดตามสถานะขอบเขต
+  assert.equal((html.match(/id="mapEmpty"/g) || []).length, 1);
+  assert.match(css, /body\.is-empty-plot \.map-empty\s*\{[^}]*display:\s*grid/);
+  assert.match(app, /classList\.toggle\('is-empty-plot', !hasBoundary && !mobileDrawing && !desktopDrawing\)/);
+  // จุดแจ้งบนแท็บรายงานเมื่อพร้อมส่งออก
+  assert.match(app, /reportTab\.dataset\.ready = String\(hasTrees && !reportExported\)/);
+  assert.match(css, /\.map-bottom-nav button\[data-ready="true"\]::after/);
+  // แอนิเมชันจุดปลูกเล่นเฉพาะตอนสร้างใหม่ ไม่เกิน 800 จุด และเคารพ reduced-motion
+  assert.match(app, /pts\.length <= 800 && !prefersReducedMotion\(\)/);
+  assert.match(css, /\.tree-dot\.pop\s*\{[^}]*animation:\s*tree-pop[^}]*backwards/);
+  // ตัวเลขนับขึ้นข้ามแอนิเมชันเมื่อผู้ใช้ปิดการเคลื่อนไหว
+  assert.match(app, /function setAnimatedTreeCount[\s\S]*?prefersReducedMotion\(\)/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
+  // การสั่นและแจ้งสำเร็จต้องไม่ทำให้การสร้างจุดล้มเหลวเมื่อไม่รองรับ
+  assert.match(app, /function buzz[\s\S]*?try \{[\s\S]*?catch/);
+  assert.match(css, /\.map-toast\.ok/);
+});

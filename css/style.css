@@ -377,6 +377,76 @@ input[type=number]:focus, input[type=text]:focus { border-color: var(--palm-600)
   .map-boundary-tools { bottom: calc(132px + env(safe-area-inset-bottom)); }
 }
 
+/* ==========================================================================
+   ชั้นเสน่ห์ (charm layer) — รายละเอียดเล็ก ๆ ที่ทำให้แอปรู้สึกมีชีวิต
+   ใช้ตัวแปร/สเกลเดิมทั้งหมด และทุกแอนิเมชันถูกลดเองเมื่อผู้ใช้ตั้ง reduced-motion
+   ========================================================================== */
+:root { --ease-pop: cubic-bezier(.2, .9, .3, 1.35); }
+
+/* หัวแอป: แบนเนอร์เขียวไล่เฉด มีแสงส้มผลปาล์มมุมขวาบน */
+.app-header { margin: 0 0 14px; padding: 16px; border-radius: var(--r-md); color: #fff; box-shadow: var(--sh-1);
+  background: radial-gradient(140px 100px at 100% 0, rgb(245 154 46 / .38), transparent 70%), radial-gradient(180px 120px at 0 110%, rgb(255 255 255 / .12), transparent 70%), linear-gradient(135deg, var(--palm-800), var(--palm-600)); }
+h1 { color: #fff; }
+.app-header .sub { color: var(--palm-100); }
+.brand-icon { width: 44px; height: 44px; border-radius: var(--r-md); box-shadow: 0 2px 8px rgb(0 0 0 / .28); }
+
+/* การ์ด: ไอคอนหัวข้อเป็นป้ายสีอ่อน และยกเงาเบา ๆ เมื่อชี้ */
+.card { box-shadow: 0 1px 2px rgb(18 58 35 / .05); transition: box-shadow .2s ease, border-color .2s ease; }
+.card:hover { border-color: var(--line-strong); box-shadow: var(--sh-1); }
+.card h2 .ic { box-sizing: content-box; width: 18px; height: 18px; padding: 5px; border-radius: var(--r-sm); background: var(--palm-50); color: var(--palm-700); }
+.big { font-variant-numeric: tabular-nums; }
+
+/* ปุ่มรู้สึกถูกกด */
+button { touch-action: manipulation; transition: background .15s ease, border-color .15s ease, scale .12s ease; }
+button:active:not(:disabled) { scale: .96; }
+
+/* จุดปลูก: ลูกปัดเขียวมีมิติ ผุดเป็นคลื่นตอนสร้าง ขยายเมื่อชี้ และจุดแดงเต้นเตือน */
+.tree-dot { background: radial-gradient(circle at 35% 30%, #86e8a6, #2fb866 55%, #1e8f4d); box-shadow: 0 0 0 3px rgb(47 184 102 / .22), 0 0 2px rgb(0 0 0 / .4); transition: transform .14s ease; }
+.tree-dot.pop { animation: tree-pop .5s var(--ease-pop) backwards; }
+@keyframes tree-pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.leaflet-marker-draggable:hover .tree-dot { transform: scale(1.4); }
+.tree-dot.bad { background: radial-gradient(circle at 35% 30%, #ff9a8c, #f0432f 60%, #c62a18); animation: bad-pulse 1.6s ease-in-out infinite; }
+@keyframes bad-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(240 67 47 / .55), 0 0 2px rgb(0 0 0 / .4); } 50% { box-shadow: 0 0 0 8px rgb(240 67 47 / 0), 0 0 2px rgb(0 0 0 / .4); } }
+
+/* ตัวเลขจำนวนต้นเด้งเล็กน้อยเมื่อเปลี่ยน */
+.count-pop { transform-origin: left center; animation: count-pop .5s var(--ease-pop); }
+@keyframes count-pop { 0% { transform: scale(1); } 40% { transform: scale(1.16); color: var(--fruit-ink); } 100% { transform: scale(1); } }
+
+/* แจ้งสำเร็จ */
+.map-toast.ok { background: rgb(29 92 55 / .97); }
+.map-toast.ok::before { content: ""; flex: 0 0 20px; width: 20px; height: 20px; background: #fff;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat; }
+.map-toast { animation: toast-in .28s var(--ease-pop); }
+@keyframes toast-in { from { opacity: 0; translate: 0 -10px; } to { opacity: 1; translate: 0 0; } }
+
+/* หน้าแผนที่ว่าง: การ์ดต้อนรับบอกว่าเริ่มตรงไหน (หายเองเมื่อเริ่มวาด) */
+.map-empty { position: fixed; z-index: 1040; top: 0; right: 0; bottom: 0; left: 410px; display: none; place-items: center; padding: 16px; pointer-events: none; }
+body.is-empty-plot .map-empty { display: grid; }
+.map-empty-card { display: grid; justify-items: center; gap: 6px; max-width: 300px; padding: 20px 22px; border-radius: var(--r-lg); background: var(--float); box-shadow: var(--sh-2); backdrop-filter: blur(10px); text-align: center; animation: empty-in .5s var(--ease-pop) .15s backwards; }
+@keyframes empty-in { from { opacity: 0; translate: 0 14px; } to { opacity: 1; translate: 0 0; } }
+.map-empty-card .ic { box-sizing: content-box; width: 30px; height: 30px; padding: 11px; border-radius: 50%; background: var(--palm-100); color: var(--palm-700); transform-origin: 50% 88%; animation: palm-sway 3.4s ease-in-out infinite; }
+@keyframes palm-sway { 0%, 100% { rotate: -7deg; } 50% { rotate: 7deg; } }
+.map-empty-card strong { color: var(--palm-900); font-size: var(--t-lg); line-height: 1.35; }
+.map-empty-card span { color: var(--ink-2); font-size: var(--t-sm); line-height: 1.55; }
+.map-empty-card .empty-mobile { display: none; }
+@media (max-width: 800px) and (min-width: 721px) { .map-empty { left: 360px; } }
+
+@media (max-width: 720px), (orientation: landscape) and (max-width: 900px) {
+  .app-header { padding: 14px; }
+  .map-empty { left: 0; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
+  .map-empty-card .empty-mobile { display: block; }
+  .map-empty-card .empty-desktop { display: none; }
+  body[data-mobile-view="tools"] .map-empty, body[data-mobile-view="report"] .map-empty { display: none !important; }
+  /* ปุ่ม + ส้ม เต้นเป็นจังหวะชวนกดตอนยังไม่เริ่ม */
+  body.is-empty-plot .map-action-area:not(.is-open) .map-primary-action::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 0 rgb(204 92 7 / .5); animation: cta-ring 2.2s ease-out infinite; pointer-events: none; }
+  @keyframes cta-ring { to { box-shadow: 0 0 0 20px rgb(204 92 7 / 0); } }
+  /* แถบนำทาง: แท็บปัจจุบันมีแคปซูลรอง และจุดส้มบนแท็บรายงานเมื่อพร้อมส่งออก */
+  .map-bottom-nav button[aria-current="page"] { background: var(--palm-50); border-radius: var(--r-md); }
+  .map-bottom-nav button[data-ready="true"]::after { content: ""; position: absolute; top: 4px; left: calc(50% + 8px); width: 11px; height: 11px; border: 2px solid #fff; border-radius: 50%; background: var(--fruit); animation: dot-pop .45s var(--ease-pop); }
+  @keyframes dot-pop { from { scale: 0; } to { scale: 1; } }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; transition-delay: 0ms !important; animation-duration: .01ms !important; }
   .map-flow.flow-pop .flow-chip { animation: none; }
