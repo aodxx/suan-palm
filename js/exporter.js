@@ -406,7 +406,7 @@ async function exportPdf() {
     const datePart = new Date().toISOString().slice(0, 10);
     pdf.save('palm-plan-' + safePdfName(metadata.plotName) + '-' + datePart + '.pdf');
     markReportExported();
-    setStatus('✅ ส่งออก PDF แล้ว · หากไม่เห็นไฟล์ ให้ดูในรายการดาวน์โหลดหรือแอปไฟล์ของเครื่อง', 'ok');
+    setStatus('ส่งออก PDF แล้ว · หากไม่เห็นไฟล์ ให้ดูในรายการดาวน์โหลดหรือแอปไฟล์ของเครื่อง', 'ok');
   } catch (error) {
     console.error('PDF export failed:', error);
     setStatus('ไม่สามารถสร้าง PDF ได้ กรุณาลองใหม่อีกครั้ง', 'warn');
