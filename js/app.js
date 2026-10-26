@@ -85,7 +85,34 @@ const statusEl = $('status');
 let desktopDrawing = false;      // กำลังวาดด้วยเครื่องมือ Leaflet.draw บนเดสก์ท็อป
 let flowBadCursor = 0;          // ลำดับจุดสีแดงที่กำลังพาไปดู
 let flowLastStage = '';         // ใช้ทำแอนิเมชันเมื่อเปลี่ยนขั้นตอน
-function setStatus(text, cls) { statusEl.textContent = text; statusEl.className = cls || ''; }
+let mapToastTimer = null;
+function hideMapToast() {
+  const toast = $('mapToast');
+  if (mapToastTimer) { clearTimeout(mapToastTimer); mapToastTimer = null; }
+  if (toast) toast.hidden = true;
+}
+// แจ้งบนแผนที่ เพราะบนมือถือแผงสถานะอยู่ในหน้าเครื่องมือที่ซ่อนอยู่ ผู้ใช้จึงมองไม่เห็นข้อความเตือน
+function showMapToast(text, cls, { label = '', onClick = null, ms = 0, force = false } = {}) {
+  const toast = $('mapToast');
+  if (!toast) return;
+  const mobile = typeof usesMobileMapUI === 'function' && usesMobileMapUI();
+  if (!force && !mobile) return;
+  if (mobile && document.body.dataset.mobileView && document.body.dataset.mobileView !== 'map') return;
+  $('mapToastText').textContent = text;
+  toast.className = 'map-toast ' + (cls || '');
+  const action = $('mapToastAction');
+  action.hidden = !label;
+  action.textContent = label;
+  action.onclick = () => { hideMapToast(); if (onClick) onClick(); };
+  toast.hidden = false;
+  if (mapToastTimer) clearTimeout(mapToastTimer);
+  mapToastTimer = setTimeout(hideMapToast, ms || (cls === 'warn' ? 6000 : 3500));
+}
+function setStatus(text, cls, opts = {}) {
+  statusEl.textContent = text;
+  statusEl.className = cls || '';
+  if (cls === 'warn' && opts.toast !== false) showMapToast(text, 'warn');
+}
 
 function activateCategory(name, focus = false) {
   const tab = document.querySelector('.category-tab[data-panel="' + name + '"]');
@@ -748,6 +775,7 @@ function restoreDraft() {
     renderPlotLocationMarker();
     updateLocationLabel();
     updateSpacingSummary();
+    if (drawnItems.getLayers().length) fitToPlot();
     setStorageStatus('กู้คืนข้อมูลแปลงล่าสุดแล้ว · ' + (draft.savedAt ? new Date(draft.savedAt).toLocaleString('th-TH') : 'ข้อมูลในเครื่อง'));
     setStatus('กู้คืนข้อมูลแปลงจากการใช้งานครั้งล่าสุดแล้ว', 'ok');
   } finally {
@@ -1000,10 +1028,12 @@ function removeTree(t) {
   if (removed.length > 100) removed.shift();
   map.closePopup();
   rebuildHash(); updateCount(); recheckAll(); saveDraft();
+  showMapToast('ลบต้นแล้ว · เหลือ ' + trees.length.toLocaleString('th-TH') + ' ต้น', 'ok', { label: 'เลิกทำ', onClick: undoRemove, ms: 7000, force: true });
 }
 function undoRemove() {
   const t = removed.pop();
   if (!t) return;
+  hideMapToast();
   t.bad = false;                       // marker ถูกสร้างใหม่ จึงเริ่มเป็นสีเขียว
   gridLayer.addLayer(t.marker);
   trees.push(t);
@@ -1011,7 +1041,7 @@ function undoRemove() {
 }
 function openDeletePopup(t) {
   const div = document.createElement('div');
-  div.innerHTML = '<button type="button" style="margin:0;padding:6px 12px">🗑 ลบต้นนี้</button>';
+  div.innerHTML = '<button type="button" class="tree-delete-btn">🗑 ลบต้นนี้</button>';
   div.firstChild.onclick = () => removeTree(t);
   delPopup.setLatLng(t.marker.getLatLng()).setContent(div).openOn(map);
 }
@@ -1041,7 +1071,7 @@ function onDrag(t) {
   dragTip.setContent('ใกล้สุด ' + d.toFixed(2) + ' ม.' + (bad ? ' ⚠ น้อยกว่า 9 ม.!' : ' ✓'));
   guideLine.setStyle({ color: bad ? '#ff1744' : '#ffeb3b' });
   guideLine.setLatLngs([ll, other.marker.getLatLng()]);
-  if (bad) setStatus('⚠ ต้นนี้อยู่ห่างจากต้นข้างเคียงเพียง ' + d.toFixed(2) + ' ม. (ต่ำกว่า 9 ม.)', 'warn');
+  if (bad) setStatus('⚠ ต้นนี้อยู่ห่างจากต้นข้างเคียงเพียง ' + d.toFixed(2) + ' ม. (ต่ำกว่า 9 ม.)', 'warn', { toast: false });
   else setStatus('ระยะถึงต้นที่ใกล้ที่สุด ' + d.toFixed(2) + ' ม.', 'ok');
 }
 
@@ -1053,7 +1083,7 @@ function recheckAll() {
     if (bad) n++;
     setBad(t, bad);
   }
-  if (n) setStatus('⚠️ พบ ' + n + ' ต้นที่อยู่ใกล้กันเกินไป (น้อยกว่า 9 เมตร) จุดเหล่านี้จะแสดงเป็นสีแดง', 'warn');
+  if (n) setStatus('⚠️ พบ ' + n + ' ต้นที่อยู่ใกล้กันเกินไป (น้อยกว่า 9 เมตร) จุดเหล่านี้จะแสดงเป็นสีแดง', 'warn', { toast: false });
   else setStatus('ทุกต้นห่างกันอย่างน้อย 9 ม. (รวม ' + trees.length.toLocaleString('th-TH') + ' ต้น)', 'ok');
   flowBadCursor = 0;
   updateMapFlow();
@@ -1415,6 +1445,7 @@ function setMobileView(view) {
     else button.removeAttribute('aria-current');
   });
   closeMapActionMenu();
+  if (view !== 'map') hideMapToast();
   if (mobileBoundaryMode && view !== 'map') stopMobileBoundary();
   if (view === 'map') setTimeout(() => map.invalidateSize({ animate: false }), 80);
   if (view === 'tools') setTimeout(() => $('sidebarContent').scrollTo({ top: 0 }), 0);
