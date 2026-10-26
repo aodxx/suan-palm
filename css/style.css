@@ -469,3 +469,14 @@ input[type=number], input[type=text] { width: 100%; min-height: 42px; padding: 8
 .confirm-cancel { background: #eef3ee; color: #25332a; border-color: #d4ddd5; }
 .confirm-ok { background: #2e7d32; color: #fff; }
 .confirm-ok.is-danger { background: #c62828; }
+
+/* ---------- ส่งออกรายงานบนมือถือให้ทำได้จนจบ ---------- */
+.report-gate-card, .report-name-card { display: none; }
+.map-flow[data-stage="done"] .flow-cta { background: #168447; }
+.report-gate-card { border-color: #f0c987 !important; background: #fff8e8 !important; }
+@media (max-width: 720px), (orientation: landscape) and (max-width: 900px) {
+  body[data-mobile-view="report"] .report-name-card { display: block; }
+  body[data-mobile-view="report"] .report-gate-card:not([hidden]) { display: block; }
+  /* แสดงแผนที่ไว้ใต้หน้ารายงานชั่วคราว เพื่อให้จับภาพลง PDF/พิมพ์ได้ (หน้ารายงานบังอยู่ทั้งหน้า) */
+  body.is-exporting-map #map { display: block !important; z-index: -1 !important; }
+}

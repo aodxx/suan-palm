@@ -319,3 +319,23 @@ test('too-close wording follows the configured spacing instead of a fixed 9 m', 
   assert.match(html, /id="appSub"/);
   assert.match(app, /sub\.textContent = 'ปลูกแบบสามเหลี่ยมด้านเท่า '/);
 });
+
+test('mobile report view can finish: map is captured while hidden, name can be entered, and gaps are explained', () => {
+  const app = read('js/app.js');
+  const exporter = read('js/exporter.js');
+  assert.match(exporter, /async function captureMapCanvas\(/);
+  assert.doesNotMatch(exporter, /html2canvas\(\$\('map'\)/, 'exports must not capture a possibly hidden #map directly');
+  assert.equal((exporter.match(/await captureMapCanvas\(\)/g) || []).length, 2, 'PDF and print both use the safe capture');
+  assert.match(exporter, /classList\.add\('is-exporting-map'\)[\s\S]*classList\.remove\('is-exporting-map'\)/);
+  assert.match(exporter, /map\.setView\(previousView\.center, previousView\.zoom/);
+  assert.match(css, /body\.is-exporting-map #map\s*\{\s*display:\s*block\s*!important/);
+  for (const id of ['reportPlotName', 'reportNameHint', 'reportGate', 'reportGateText', 'reportGateAction']) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(css, /body\[data-mobile-view="report"\] \.report-name-card\s*\{\s*display:\s*block/);
+  assert.match(app, /\$\('reportPlotName'\)\?\.addEventListener\('input'/);
+  // finishing state of the flow card
+  assert.match(app, /stage = 'done'/);
+  assert.match(app, /function markReportExported\(/);
+  assert.equal((exporter.match(/markReportExported\(\)/g) || []).length, 4, 'PDF, print, CSV and GeoJSON mark the plan as exported');
+  assert.match(app, /if \(reportExported\) \{ reportExported = false; updateMapFlow\(\); \}/);
+  assert.doesNotMatch(exporter, /โฟลเดอร์ Downloads/, 'iOS has no Downloads folder wording');
+});
