@@ -27,7 +27,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="สวนปาล์ม">
 <link rel="icon" href="assets/icons/favicon.ico?v=20261023-2" sizes="any">
-<link rel="icon" type="image/svg+xml" href="assets/icons/palm-gps-icon.svg?v=20261023-2">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/png-square/palm-gps-icon-square-32.png?v=20261023-2">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/png-square/palm-gps-icon-square-180.png?v=20261023-2">
 <link rel="manifest" href="site.webmanifest?v=20261023-2">
 <link rel="preload" href="assets/fonts/Sarabun-Regular.ttf" as="font" type="font/ttf" crossorigin>
@@ -143,6 +143,7 @@
       <i aria-hidden="true"></i>
       <div><span id="mapPerimeterLabel">แนวเขต</span><strong id="mapPerimeterSummary">– ม.</strong></div>
     </div>
+    <div id="mapSavedChip" class="map-saved-chip" role="status" aria-live="polite" hidden><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>บันทึกในเครื่องแล้ว</span></div>
     <div id="mapCrosshair" class="map-crosshair" aria-hidden="true"><span></span></div>
     <div id="mapMeasureBadge" class="map-measure-badge" aria-live="polite" hidden>
       <strong id="mapSegmentDistance">ช่วงล่าสุด 0 ม.</strong><span id="mapBoundaryHint">เลื่อนแผนที่แล้วแตะ + เพื่อปักจุด</span>
@@ -223,5 +224,6 @@
 <script src="js/calculator.js"></script>
 <script src="js/app.js"></script>
 <script src="js/exporter.js"></script>
+<script src="js/pwa.js"></script>
 </body>
 </html>

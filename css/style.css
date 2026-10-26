@@ -447,6 +447,15 @@ body.is-empty-plot .map-empty { display: grid; }
   @keyframes dot-pop { from { scale: 0; } to { scale: 1; } }
 }
 
+/* ชิปบันทึกแล้ว (มือถือ) */
+.map-saved-chip { display: none; }
+@media (max-width: 720px), (orientation: landscape) and (max-width: 900px) {
+  .map-saved-chip { position: absolute; top: calc(82px + env(safe-area-inset-top)); left: 14px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px 3px 6px; border-radius: var(--pill); background: var(--float); box-shadow: var(--sh-1); color: var(--palm-700); font-size: var(--t-xs); font-weight: 700; pointer-events: none; }
+  .map-saved-chip[hidden], .map-ui.is-drawing .map-saved-chip { display: none; }
+  .map-saved-chip .ic { width: 16px; height: 16px; stroke-width: 2.4; }
+  .map-saved-chip.is-shown { animation: toast-in .28s var(--ease-pop); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; transition-delay: 0ms !important; animation-duration: .01ms !important; }
   .map-flow.flow-pop .flow-chip { animation: none; }
