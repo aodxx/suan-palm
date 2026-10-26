@@ -82,11 +82,11 @@ test('existing boundary, grid, export, and persistence handlers remain connected
   for (const id of ['btnGenerate', 'btnUndo', 'btnPDF', 'btnPrint', 'btnCSV', 'btnGeoJSON', 'btnClear', 'btnPickPlot', 'btnLocate']) {
     assert.ok(app.includes(`$('${id}')`), `missing handler reference for #${id}`);
   }
-  assert.match(app, /restoreDraft\(\);\s*updateWorkflow\(\);/);
+  assert.match(app, /restoreDraft\(\);\s*updateSpacingSummary\(\);\s*updateWorkflow\(\);/);
   assert.match(app, /const STORAGE_KEY = 'suan-palm-draft-v1'/);
   assert.match(app, /version: 1/);
   assert.match(app, /L\.Draw\.Event\.CREATED/);
-  assert.match(app, /function generateGrid\(/);
+  assert.match(app, /(async )?function generateGrid\(/);
 });
 
 test('GPS permission failure persists the cleared location in the existing draft', () => {
@@ -189,7 +189,7 @@ test('mobile map provides an explicit north-up indicator and user-initiated came
   assert.match(app, /URL\.createObjectURL\(file\)/);
   assert.match(app, /marker\.bindPopup\(popup/);
   assert.match(app, /ภาพอยู่ชั่วคราวในหน้านี้และไม่ถูกอัปโหลด/);
-  assert.match(app, /cameraPhotoMarkers\.length\) && !confirm/);
+  assert.match(app, /cameraPhotoMarkers\.length\) && !\(await askConfirm\(/);
   assert.match(app, /function clearCameraPhotoMarkers\(/);
   assert.match(app, /URL\.revokeObjectURL\(imageUrl\)/);
 });
@@ -295,4 +295,27 @@ test('map shows warnings and delete-undo itself because the status panel is hidd
   assert.match(app, /class=\"tree-delete-btn\"/);
   assert.match(css, /\.tree-delete-btn\s*\{\s*min-height:\s*44px/);
   assert.match(app, /if \(drawnItems\.getLayers\(\)\.length\) fitToPlot\(\)/);
+});
+
+test('destructive actions use the in-app confirm dialog instead of window.confirm', () => {
+  const app = read('js/app.js');
+  for (const id of ['confirmDialog', 'confirmText', 'confirmOk', 'confirmCancel']) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(html, /role="alertdialog"[^>]*aria-modal="true"/);
+  assert.match(app, /function askConfirm\(/);
+  const calls = [...app.matchAll(/(?<![\w.$])confirm\(/g)];
+  assert.equal(calls.length, 0, 'no bare confirm() calls remain');
+  assert.match(app, /window\.confirm\(message\)/);
+  assert.ok((app.match(/await askConfirm\(/g) || []).length >= 5);
+  assert.match(app, /async function generateGrid\(/);
+  assert.match(app, /boundaryEditApproved/);
+  assert.match(app, /layerType: 'polygon', confirmed: true/);
+  assert.match(css, /\.confirm-scrim\s*\{[^}]*position:\s*fixed/);
+});
+
+test('too-close wording follows the configured spacing instead of a fixed 9 m', () => {
+  const app = read('js/app.js');
+  assert.doesNotMatch(app, /น้อยกว่า 9 ม\.|ต่ำกว่า 9 ม\.|น้อยกว่า 9 เมตร|อย่างน้อย 9 ม\. \(รวม/);
+  assert.match(app, /lastGeneratedSpacing\.toFixed\(1\)/);
+  assert.match(html, /id="appSub"/);
+  assert.match(app, /sub\.textContent = 'ปลูกแบบสามเหลี่ยมด้านเท่า '/);
 });

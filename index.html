@@ -43,7 +43,7 @@
     <div id="sidebarContent">
       <header class="app-header">
         <h1><img class="brand-icon" src="assets/icons/png/palm-gps-icon-32.png" alt=""> วางแผนปลูกปาล์ม</h1>
-        <div class="sub">ปลูกแบบสามเหลี่ยมด้านเท่า 9 × 9 × 9 เมตร</div>
+        <div class="sub" id="appSub">ปลูกแบบสามเหลี่ยมด้านเท่า 9 × 9 × 9 เมตร</div>
       </header>
 
       <div class="primary-action">
@@ -161,6 +161,12 @@
       <button id="mapFlowCta" class="flow-cta" type="button">เริ่มวาด</button>
     </div>
   </section>
+  <div id="confirmDialog" class="confirm-scrim" hidden>
+    <div class="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="confirmText">
+      <p id="confirmText"></p>
+      <div class="confirm-actions"><button id="confirmCancel" type="button" class="confirm-cancel">ยกเลิก</button><button id="confirmOk" type="button" class="confirm-ok">ดำเนินการต่อ</button></div>
+    </div>
+  </div>
   <div id="mapToast" class="map-toast" role="status" aria-live="polite" hidden><span id="mapToastText"></span><button id="mapToastAction" type="button" hidden></button></div>
   <nav class="map-bottom-nav" aria-label="หน้าหลัก">
     <button id="mapHomeShortcut" type="button" data-mobile-view="map" aria-current="page"><span>⌖</span><small>แผนที่</small></button>
