@@ -400,3 +400,34 @@ test('offline support: service worker precaches the shell, manifest has separate
   assert.equal((html.match(/id="mapSavedChip"/g) || []).length, 1);
   assert.match(app, /function flashSavedChip/);
 });
+
+test('seedling price: asked once before generating (skippable), replant % is included in quantity, total and every export', () => {
+  const app = read('js/app.js');
+  const exporter = read('js/exporter.js');
+  const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
+  assert.equal(ids.length, new Set(ids).size, 'duplicate ids');
+  for (const id of ['priceDialog', 'priceInput', 'priceSkip', 'priceOk', 'priceEstimate', 'replantPct', 'seedlingQty']) assert.ok(ids.includes(id), `missing #${id}`);
+  // ถามก่อนสร้างจุดปลูก เฉพาะเมื่อยังไม่มีราคาและยังไม่ได้เลือกข้าม
+  assert.match(app, /if \(currentFeature\) await promptSeedlingPriceIfNeeded\(\);\s*await generateGrid\(\);/);
+  assert.match(app, /if \(getSeedlingPrice\(\) !== null \|\| seedlingPriceSkipped\) return;/);
+  assert.match(app, /seedlingPriceSkipped = false;\s*clearCameraPhotoMarkers/);
+  // ค่า replantPct ถูกบันทึกและกู้คืนจาก draft เดิม
+  assert.match(app, /replantPct: \$\('replantPct'\)\.value \|\| '0'/);
+  assert.match(app, /\$\('replantPct'\)\.value = draft\.replantPct \|\| '0'/);
+  // ไฟล์ส่งออกทุกชนิดใช้จำนวนที่ซื้อจริง (รวมปลูกซ่อม)
+  assert.match(exporter, /seedlingPrice \* getSeedlingQuantity\(\)/);
+  assert.ok((exporter.match(/จำนวนต้นกล้าที่(?:ต้อง)?ซื้อ/g) || []).length >= 4, 'GeoJSON, CSV, PDF and print should state the quantity bought');
+
+  // สูตร: ปัดขึ้นเสมอ และจำกัดปลูกซ่อม 0–30%
+  const start = app.indexOf('function getReplantPct()');
+  const end = app.indexOf('function updateSeedlingCost()');
+  const fields = { replantPct: { value: '10' } };
+  const context = { $: id => fields[id], trees: new Array(1000), Number, Math, parseFloat };
+  vm.runInNewContext(`${app.slice(start, end)}\nthis.qty = getSeedlingQuantity; this.pct = getReplantPct;`, context);
+  assert.equal(context.qty(), 1100);
+  assert.equal(context.qty(333), 367, 'rounds up so the bought quantity is never short');
+  fields.replantPct.value = '7'; assert.equal(context.qty(100), 107);
+  fields.replantPct.value = '99'; assert.equal(context.pct(), 30);
+  fields.replantPct.value = '-5'; assert.equal(context.pct(), 0);
+  fields.replantPct.value = ''; assert.equal(context.qty(), 1000);
+});
