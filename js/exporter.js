@@ -88,6 +88,7 @@ $('btnGeoJSON').addEventListener('click', () => {
     วันที่สร้าง: metadata.createdAt
   };
   if (download('palm-plan.geojson', 'application/geo+json', JSON.stringify(fc, null, 2))) {
+    markReportExported();
     setStatus('ส่งออก GeoJSON แล้ว · ' + currentPoints().length.toLocaleString('th-TH') + ' จุด', 'ok');
   }
 });
@@ -109,6 +110,7 @@ $('btnCSV').addEventListener('click', () => {
   const rows = ['id,lat,lng'].concat(currentPoints().map(p =>
     p.id + ',' + p.lat.toFixed(8) + ',' + p.lng.toFixed(8)));
   if (download('palm-plan.csv', 'text/csv;charset=utf-8', '﻿' + header.concat(rows).join('\n'))) {
+    markReportExported();
     setStatus('ส่งออก CSV แล้ว · ' + currentPoints().length.toLocaleString('th-TH') + ' จุด', 'ok');
   }
 });
@@ -122,6 +124,41 @@ function waitForMapTiles() {
     img.addEventListener('error', resolve, { once: true });
     setTimeout(resolve, 5000);
   }))).then(() => new Promise(resolve => setTimeout(resolve, 350)));
+}
+
+// บนมือถือ หน้า "รายงาน" ซ่อนแผนที่ไว้ (display:none) html2canvas จึงจับภาพไม่ได้ (ขนาด 0)
+// จึงแสดงแผนที่ไว้ใต้หน้ารายงานชั่วคราว ซูมให้เห็นทั้งแปลง แล้วคืนมุมมองเดิมหลังจับภาพเสร็จ
+async function captureMapCanvas() {
+  const mapEl = $('map');
+  const wasHidden = mapEl.offsetWidth === 0 || mapEl.offsetHeight === 0;
+  const previousView = { center: map.getCenter(), zoom: map.getZoom() };
+  if (wasHidden) {
+    document.body.classList.add('is-exporting-map');
+    map.invalidateSize({ animate: false });
+    if (drawnItems.getLayers().length) map.fitBounds(drawnItems.getBounds(), { padding: [32, 32], maxZoom: 19, animate: false });
+    await new Promise(resolve => requestAnimationFrame(() => resolve()));
+  } else {
+    map.invalidateSize();
+  }
+  try {
+    await waitForMapTiles();
+    return await html2canvas(mapEl, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+      onclone: clonedDocument => {
+        clonedDocument.querySelectorAll('.leaflet-control-container').forEach(el => { el.style.display = 'none'; });
+      }
+    });
+  } finally {
+    if (wasHidden) {
+      document.body.classList.remove('is-exporting-map');
+      map.invalidateSize({ animate: false });
+      map.setView(previousView.center, previousView.zoom, { animate: false });
+    }
+  }
 }
 
 async function renderPdfElement(element) {
@@ -318,20 +355,7 @@ async function exportPdf() {
   const oldText = button.textContent;
   button.textContent = 'กำลังสร้าง PDF...';
   try {
-    map.invalidateSize();
-    await waitForMapTiles();
-    const mapCanvas = await html2canvas($('map'), {
-      scale: 2,
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: '#ffffff',
-      logging: false,
-      onclone: clonedDocument => {
-        clonedDocument.querySelectorAll('.leaflet-control-container').forEach(el => {
-          el.style.display = 'none';
-        });
-      }
-    });
+    const mapCanvas = await captureMapCanvas();
 
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -381,7 +405,8 @@ async function exportPdf() {
     pdfFooter(pdf, 2);
     const datePart = new Date().toISOString().slice(0, 10);
     pdf.save('palm-plan-' + safePdfName(metadata.plotName) + '-' + datePart + '.pdf');
-    setStatus('✅ ดาวน์โหลดไฟล์เรียบร้อยแล้ว กรุณาตรวจสอบในโฟลเดอร์ Downloads', 'ok');
+    markReportExported();
+    setStatus('✅ ส่งออก PDF แล้ว · หากไม่เห็นไฟล์ ให้ดูในรายการดาวน์โหลดหรือแอปไฟล์ของเครื่อง', 'ok');
   } catch (error) {
     console.error('PDF export failed:', error);
     setStatus('ไม่สามารถสร้าง PDF ได้ กรุณาลองใหม่อีกครั้ง', 'warn');
@@ -480,12 +505,7 @@ async function printReport() {
     button.textContent = oldText;
   };
   try {
-    map.invalidateSize();
-    await waitForMapTiles();
-    const mapCanvas = await html2canvas($('map'), {
-      scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', logging: false,
-      onclone: clonedDocument => clonedDocument.querySelectorAll('.leaflet-control-container').forEach(el => { el.style.display = 'none'; })
-    });
+    const mapCanvas = await captureMapCanvas();
     const metadata = exportMetadata();
     const data = printReportData(metadata);
     printSheet = document.createElement('div');
@@ -502,6 +522,7 @@ async function printReport() {
       setStatus('ปิดหน้าพิมพ์แล้ว หากต้องการไฟล์ให้เลือก “บันทึกเป็น PDF”', 'ok');
     };
     window.print();
+    markReportExported();
     setStatus('เปิดหน้าพิมพ์แล้ว กรุณาเลือก “บันทึกเป็น PDF” หากต้องการไฟล์ PDF', 'ok');
   } catch (error) {
     console.error('Print report failed:', error);

@@ -84,6 +84,7 @@ const $ = id => document.getElementById(id);
 const statusEl = $('status');
 const CONFIRM_NEW_BOUNDARY = 'การวาดขอบเขตใหม่จะแทนแปลงเดิมและล้างจุดปลูกทั้งหมด รวมถึงจุดที่ลากปรับไว้ ต้องการดำเนินการต่อหรือไม่?';
 let boundaryEditApproved = false;
+let reportExported = false;     // ส่งออกรายงาน/ไฟล์แล้ว (รีเซ็ตเมื่อข้อมูลเปลี่ยน)
 let desktopDrawing = false;      // กำลังวาดด้วยเครื่องมือ Leaflet.draw บนเดสก์ท็อป
 let flowBadCursor = 0;          // ลำดับจุดสีแดงที่กำลังพาไปดู
 let flowLastStage = '';         // ใช้ทำแอนิเมชันเมื่อเปลี่ยนขั้นตอน
@@ -437,6 +438,11 @@ function savePlotLocation(latlng) {
 $('btnLocate').addEventListener('click', requestUserLocation);
 $('btnPickPlot').addEventListener('click', beginPickPlotLocation);
 $('plotName').addEventListener('input', () => { updateCount(); saveDraft(); });
+$('reportPlotName')?.addEventListener('input', () => { $('plotName').value = $('reportPlotName').value; updateCount(); saveDraft(); });
+$('reportGateAction')?.addEventListener('click', () => {
+  if (usesMobileMapUI()) setMobileView('map');
+  if (!currentFeature) startBoundaryDraw();
+});
 $('seedlingPrice').addEventListener('input', () => { updateSeedlingCost(); saveDraft(); });
 $('spacing').addEventListener('change', async () => {
   const value = getConfiguredSpacing();
@@ -729,6 +735,7 @@ document.querySelectorAll('.category-tab').forEach((tab, index, tabs) => {
 
 function saveDraft() {
   if (restoringDraft) return;
+  if (reportExported) { reportExported = false; updateMapFlow(); }
   try {
     const draft = {
       version: 1,
@@ -886,6 +893,16 @@ function updateCount() {
   }
   const has = trees.length > 0;
   const hasPlotName = Boolean(($('plotName').value || '').trim());
+  const reportName = $('reportPlotName');
+  if (reportName && reportName.value !== $('plotName').value && document.activeElement !== reportName) reportName.value = $('plotName').value;
+  const gate = $('reportGate');
+  if (gate) {
+    gate.hidden = has;
+    $('reportGateText').textContent = currentFeature ? 'ยังไม่ได้สร้างจุดปลูก · กลับไปแผนที่แล้วกด “สร้างจุดปลูก” ก่อนจึงส่งออกได้' : 'ยังไม่ได้วาดขอบเขตแปลง · วาดแปลงและสร้างจุดปลูกก่อนจึงส่งออกได้';
+    $('reportGateAction').textContent = currentFeature ? 'กลับไปแผนที่' : 'ไปวาดแปลง';
+  }
+  const nameHint = $('reportNameHint');
+  if (nameHint) nameHint.hidden = !has || hasPlotName;
   $('btnGeoJSON').disabled = !has;
   $('btnCSV').disabled = !has;
   $('btnPDF').disabled = !has || !hasPlotName;
@@ -1139,6 +1156,11 @@ function recheckAll() {
 
 
 // ---------- แถบขั้นตอนต่อเนื่อง: วาดแปลง → ดูพื้นที่ → สร้างจุดปลูก → ตรวจจำนวนจริง ----------
+function markReportExported() {
+  reportExported = true;
+  updateMapFlow();
+}
+
 function startBoundaryDraw() {
   if (usesMobileMapUI()) startMobileBoundary();
   else document.querySelector('.leaflet-draw-draw-polygon')?.click();
@@ -1241,6 +1263,12 @@ function updateMapFlow() {
     detail.textContent = 'ประมาณ ' + est.toLocaleString('th-TH') + ' ต้น ที่ระยะ ' + getConfiguredSpacing().toFixed(1) + ' ม.';
     cta.textContent = '🌴 สร้างจุดปลูก';
     second.hidden = false;
+  } else if (reportExported && !trees.some(t => t.bad)) {
+    stage = 'done'; current = -1; count = '✓'; short = 'ส่งออกแล้ว';
+    title.textContent = 'ส่งออกรายงานเรียบร้อย';
+    detail.textContent = 'จำนวนจริง ' + trees.length.toLocaleString('th-TH') + ' ต้น · แก้ไขจุดแล้วส่งออกใหม่ได้ตลอด';
+    cta.textContent = 'ส่งออกอีกครั้ง';
+    action = 'report';
   } else {
     stage = 'check'; current = 3; count = '4/4';
     const rai = currentAreaM2 / RAI_M2;
@@ -1271,7 +1299,7 @@ function updateMapFlow() {
   card.dataset.stage = stage;
   const drawing = mobileDrawing || desktopDrawing;
   card.querySelectorAll('[data-flow-step]').forEach((step, index) => {
-    const doneUpTo = drawing || !hasBoundary ? 0 : !hasTrees ? 1 : 3;
+    const doneUpTo = drawing || !hasBoundary ? 0 : !hasTrees ? 1 : stage === 'done' ? 4 : 3;
     const isCurrent = index === (drawing ? 0 : current);
     step.classList.toggle('is-done', index < doneUpTo);
     step.classList.toggle('is-current', isCurrent);
@@ -1656,3 +1684,4 @@ map.whenReady(() => {
 restoreDraft();
 updateSpacingSummary();
 updateWorkflow();
+updateCount();   // ให้ข้อความช่วยเหลือหน้ารายงานและสถานะปุ่มถูกต้องตั้งแต่เปิดแอป

@@ -85,6 +85,10 @@
         </section>
 
         <section class="category-panel" id="panel-report" aria-label="รายงานและส่งออก">
+          <div class="card report-gate-card" id="reportGate" hidden><p id="reportGateText" class="panel-help"></p><button id="reportGateAction" class="btn2" type="button">กลับไปแผนที่</button></div>
+          <div class="card report-name-card"><h2><img class="inline-icon" src="assets/icons/ui-3d/plot.svg" alt="" aria-hidden="true"> ชื่อแปลงสำหรับรายงาน</h2>
+            <div class="field"><label for="reportPlotName">ชื่อแปลง/เจ้าของแปลง <span class="required-mark">* จำเป็นก่อนดาวน์โหลด PDF</span></label><input type="text" id="reportPlotName" placeholder="เช่น สวนปาล์มบ้านเรา" maxlength="120" autocomplete="off"><div id="reportNameHint" class="field-hint" hidden>กรอกชื่อแล้วปุ่มดาวน์โหลด PDF และพิมพ์รายงานจะใช้งานได้</div></div>
+          </div>
           <div class="card"><h2><img class="inline-icon" src="assets/icons/ui-3d/report.svg" alt="" aria-hidden="true"> รายงานและส่งออก</h2><p class="panel-help">PDF หรือพิมพ์รายงานเหมาะสำหรับอ่านและพิมพ์ ส่วน CSV และ GeoJSON ใช้นำข้อมูลไปวิเคราะห์ต่อ</p>
             <button id="btnPDF" class="btn-pdf" type="button" disabled title="สร้างจุดปลูกก่อนจึงจะทำรายงาน PDF ได้"><img class="inline-icon" src="assets/icons/ui-3d/pdf.svg" alt="" aria-hidden="true"> ดาวน์โหลดแผนที่ + ข้อมูล (PDF)</button>
             <button id="btnPrint" class="btn-print" type="button" disabled title="สร้างจุดปลูกก่อนจึงจะพิมพ์รายงานได้">🖨️ พิมพ์รายงาน / บันทึกเป็น PDF</button>
